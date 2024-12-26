@@ -31,7 +31,6 @@ public class LQRegisterCenter {
      */
     private static Thread heartThread;
 
-
     /**
      * 本项目注册的节点
      */
@@ -64,7 +63,7 @@ public class LQRegisterCenter {
      * @return
      */
     public static Set<LQNodeInfo> getSvNodeList(String serverName) {
-        return (Set<LQNodeInfo>) nodeService.rd(serverName).ofZSet().getByScore(System.currentTimeMillis() - 15000D, System.currentTimeMillis() * 1D).stream().map(i -> LQUtil.jsonToBean((String) i, LQNodeInfo.class)).collect(Collectors.toSet());
+        return (Set<LQNodeInfo>) nodeService.rd(serverName).ofZSet().getByScore(System.currentTimeMillis() - 5000D, System.currentTimeMillis() * 1D).stream().map(i -> LQUtil.jsonToBean((String) i, LQNodeInfo.class)).collect(Collectors.toSet());
     }
 
 
@@ -112,7 +111,7 @@ public class LQRegisterCenter {
                         }
                     }
                     try {
-                        Thread.sleep(5000L);
+                        Thread.sleep(2000L);
                     } catch (Exception e) {
                         log.error("tryInitRegisterCenter 睡眠失败！", e);
                     }

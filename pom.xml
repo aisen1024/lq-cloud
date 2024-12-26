@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.lingque</groupId>
-    <artifactId>lingque-cloud</artifactId>
+    <artifactId>lq-cloud</artifactId>
     <version>1.0-SNAPSHOT</version>
 
     <licenses>
