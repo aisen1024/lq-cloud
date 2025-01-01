@@ -6,25 +6,26 @@
 
     <groupId>io.github.aisen1024</groupId>
     <artifactId>lq-cloud</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <version>1.0.0</version>
     <packaging>jar</packaging>
+    <description>spring cloud 下一代微服务架构</description>
+    <url>https://github.com/aisen1024/lq-cloud</url>
 
-    <parent>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.2.4</version>
-        <relativePath/> <!-- lookup parent from repository -->
-    </parent>
 
     <licenses>
-        <license/>
+        <license>
+            <name>The Apache Software License, Version 2.0</name>
+            <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+            <comments>A business-friendly OSS license</comments>
+        </license>
     </licenses>
     <developers>
         <developer>
             <id>master</id>
             <email>aisen1024@163.com</email>
             <name>liming.zheng</name>
-            <url>https://ling-que.cpolar.top</url>
+            <url>https://github.com/aisen1024/lq-cloud</url>
             <roles>
                 <role>master</role>
                 <role>develop</role>
@@ -32,22 +33,25 @@
         </developer>
     </developers>
     <scm>
-        <connection/>
-        <developerConnection/>
-        <tag/>
-        <url/>
+        <connection>scm:git:git//https://github.com/aisen1024/lq-cloud.git</connection>
+        <developerConnection>scm:git:ssh://github.com:aisen1024/lq-cloud.git</developerConnection>
+        <url>https://github.com/aisen1024/lq-cloud/tree/develop/src/main</url>
     </scm>
+
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <serverId>central</serverId>
     </properties>
 
     <dependencies>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter</artifactId>
+            <version>3.2.4</version>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>redis.clients</groupId>
@@ -83,46 +87,87 @@
 
     <distributionManagement>
         <snapshotRepository>
-            <id>ossrh</id>
-            <url>https://s01.oss.sonatype.org/content/repositories/snapshots</url>
+            <id>${serverId}</id>
+            <url>https://central.sonatype.com/</url>
         </snapshotRepository>
-        <repository>
-            <id>ossrh</id>
-            <url>https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/</url>
-        </repository>
     </distributionManagement>
+
+
     <build>
-        <resources>
-            <resource>
-                <filtering>true</filtering>
-                <directory>src/main/resources</directory>
-                <includes>
-                    <include>**/*.*</include>
-                </includes>
-            </resource>
-        </resources>
-        <testResources>
-            <testResource>
-                <directory>src/test/resources</directory>
-            </testResource>
-            <testResource>
-                <directory>src/main/resources</directory>
-            </testResource>
-        </testResources>
         <plugins>
+
+            <!-- 编译插件，设置源码以及编译的jdk版本 -->
             <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-                <version>2.0.1.RELEASE</version>
-            </plugin>
-            <plugin>
-                <artifactId>maven-surefire-plugin</artifactId>
-                <version>2.18.1</version>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
                 <configuration>
-                    <skipTests>true</skipTests>
+                    <source>${maven.compiler.source}</source>
+                    <target>${maven.compiler.target}</target>
                 </configuration>
             </plugin>
+            <!-- Source -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+                <version>2.2.1</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>jar-no-fork</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- Javadoc -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <version>2.9.1</version>
+                <configuration>
+                    <additionalparam>-Xdoclint:none</additionalparam>
+                </configuration>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- Javadoc -->
+            <!-- Gpg Signature -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-gpg-plugin</artifactId>
+                <version>3.2.4</version>
+                <executions>
+                    <execution>
+                        <id>sign-artifacts</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>sign</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- 新方式的配置，将组件部署到OSSRH并将其发布到Central Repository-->
+            <plugin>
+                <groupId>org.sonatype.central</groupId>
+                <artifactId>central-publishing-maven-plugin</artifactId>
+                <version>0.5.0</version>
+                <extensions>true</extensions>
+                <configuration>
+                    <publishingServerId>central</publishingServerId>
+                    <checksums>required</checksums>
+                    <tokenAuth>true</tokenAuth>
+                    <deploymentName>lq-cloud</deploymentName>
+                </configuration>
+            </plugin>
+
         </plugins>
     </build>
+
 
 </project>

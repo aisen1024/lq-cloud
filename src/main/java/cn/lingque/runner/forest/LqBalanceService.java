@@ -4,10 +4,12 @@ import cn.lingque.base.LQKey;
 import cn.lingque.cloud.node.LQRegisterCenter;
 import cn.lingque.cloud.node.bean.LQNodeInfo;
 import cn.lingque.redis.bean.RedisRank;
+import cn.lingque.runner.LqCloudRunner;
 import cn.lingque.util.LQUtil;
 import jakarta.annotation.PostConstruct;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -27,6 +29,7 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 @AllArgsConstructor
+@ConditionalOnBean(value = {LqCloudRunner.class})
 public class LqBalanceService {
 
     //服务组管理
@@ -40,21 +43,23 @@ public class LqBalanceService {
     @PostConstruct
     public void flushNode() {
         LQUtil.execLoadJob("刷新节点信息", () -> {
-            Set<LQNodeInfo> nodes = LQRegisterCenter.getAllNodeList();
-            Map<String, List<LQNodeInfo>> result = new HashMap<>();
-            List<RedisRank> meltdownList = meltdownService.rd().ofZSet().pageRankLimit(0, 9999);
-            Set<String> meltdownSet = meltdownList.stream().filter(i -> i.getScore() > System.currentTimeMillis()).map(i -> i.getMemberId()).collect(Collectors.toSet());
-            if (nodes.size() > 0) {
-                nodes.forEach(node -> {
-                    if (!meltdownSet.contains(node.toString())) {
-                        LQUtil.getMapList(result, node.getServerName()).add(node);
-                    }
-                });
-                nodeManager = result;
-                //移除熔断过期节点
-                List<String> timeoutmMltdownList = meltdownList.stream().filter(i -> i.getScore() < System.currentTimeMillis()).map(i -> i.getMemberId()).collect(Collectors.toList());
-                meltdownService.rd().ofZSet().delete(timeoutmMltdownList.toArray(new String[meltdownList.size()]));
-            }
+                Set<LQNodeInfo> nodes = LQRegisterCenter.getAllNodeList();
+                Map<String, List<LQNodeInfo>> result = new HashMap<>();
+                List<RedisRank> meltdownList = meltdownService.rd().ofZSet().pageRankLimit(0, 9999);
+                Set<String> meltdownSet = meltdownList.stream().filter(i -> i.getScore() > System.currentTimeMillis()).map(i -> i.getMemberId()).collect(Collectors.toSet());
+                if (nodes.size() > 0) {
+                    nodes.forEach(node -> {
+                        if (!meltdownSet.contains(node.toString())) {
+                            LQUtil.getMapList(result, node.getServerName()).add(node);
+                        }
+                    });
+                    nodeManager = result;
+                    //移除熔断过期节点
+                    List<String> timeoutmMltdownList = meltdownList.stream().filter(i -> i.getScore() < System.currentTimeMillis()).map(i -> i.getMemberId()).collect(Collectors.toList());
+                    if(timeoutmMltdownList.size() > 0)
+                        meltdownService.rd().ofZSet().delete(timeoutmMltdownList.toArray(new String[meltdownList.size()]));
+                }
+
         }, 1, 1, TimeUnit.SECONDS);
     }
 
@@ -68,7 +73,12 @@ public class LqBalanceService {
         if (LQUtil.isEmpty(list)) {
             return null;
         }
-        int point = incrPoint.get(serverName).incrementAndGet();
+        AtomicInteger atomicInteger = incrPoint.get(serverName);
+        if (atomicInteger == null){
+            atomicInteger = new AtomicInteger(0);
+            incrPoint.put(serverName,atomicInteger);
+        }
+        int point = atomicInteger.incrementAndGet();
         if (point >= list.size()){
             incrPoint.get(serverName).set(0);
             return list.get(0);

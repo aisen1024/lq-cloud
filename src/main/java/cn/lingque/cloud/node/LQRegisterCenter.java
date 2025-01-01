@@ -52,7 +52,7 @@ public class LQRegisterCenter {
     public static boolean registerNode(LQNodeInfo node) {
         currentNodes.add(node);
         nodeService.rd(node.getServerName()).ofZSet().setScore(JSONUtil.toJsonStr(node), System.currentTimeMillis() * 1D);
-        svGroupService.rd().ofSet().add(node.getServerName());
+        svGroupService.rd().ofZSet().setScore(node.getServerName(),System.currentTimeMillis() * 1D);
         log.info("成功注册服务 {} | ip {} | port {} ", node.getServerName(), node.getNodeIp(), node.getNodePort());
         return true;
     }
@@ -74,7 +74,7 @@ public class LQRegisterCenter {
      * @return
      */
     public static Set<LQNodeInfo> getAllNodeList() {
-        List<String> serverGroups = svGroupService.rd().ofSet().getMembers(String.class);
+        List<String> serverGroups = svGroupService.rd().ofZSet().getMembers(1,System.currentTimeMillis());
         Set<LQNodeInfo> set = new HashSet<>();
         if (serverGroups != null && !serverGroups.isEmpty()) {
             for (String serverGroup : serverGroups) {
@@ -117,15 +117,14 @@ public class LQRegisterCenter {
             //清空5秒没有上报的节点
             clearThread = new Thread(() -> {
                 while (true) {
-                    List<RedisRank> svList = svGroupService.rd().ofZSet().getByScoreRange(1,System.currentTimeMillis(),9999);
-                    for (RedisRank group : svList) {
+                    List<String> svList = svGroupService.rd().ofZSet().getMembers(1,System.currentTimeMillis());
+                    for (String sv : svList) {
                         try {
-                            String sv = group.getMemberId();
                             LingQueRedis svHandle = nodeService.rd(sv);
-                            List<RedisRank> timeoutSvList = svHandle.ofZSet().getByScoreRange(1D, System.currentTimeMillis() - 5000D,20);
+                            List<String> timeoutSvList = svHandle.ofZSet().getMembers(1, System.currentTimeMillis() - 5000);
                             if (timeoutSvList != null && timeoutSvList.size() > 0) {
                                 String[] keys = new String[timeoutSvList.size()];
-                                keys = timeoutSvList.stream().map(i->i.getMemberId()).collect(Collectors.toList()).toArray(keys);
+                                keys = timeoutSvList.toArray(keys);
                                 svHandle.ofZSet().delete(keys);
                             }
                             //如果当前服务组节点都没有了，直接下架服务
@@ -133,7 +132,7 @@ public class LQRegisterCenter {
                                 svGroupService.rd().ofZSet().delete(sv);
                             }
                         } catch (Exception e) {
-                            log.error("注册节点并发布心跳异常 | {} ", group.getMemberId());
+                            log.error("注册节点并发布心跳异常 | {} ", sv);
                         }
                     }
                     try {

@@ -134,8 +134,8 @@ public class SortedSetOpt<T> {
     public long size(double min, double max) {
         return (long)lingQueRedis.execBase((jedis) -> {
             List<String> params = new ArrayList<>();
-            params.add(String.valueOf(min));
-            params.add(String.valueOf(max));
+            params.add(Double.toString(min));
+            params.add(Double.toString(max));
 
             Object result = jedis.eval(
                     SIZE_SCRIPT,
@@ -158,9 +158,9 @@ public class SortedSetOpt<T> {
                     ZADD_SCRIPT,
                     getKey(),
                     Arrays.asList(
-                            String.valueOf(score),
+                            Double.toString(score),
                             member,
-                            String.valueOf(lingQueRedis.ttl)
+                            Long.toString(lingQueRedis.ttl)
                     )
             );
             return (long) result;
@@ -226,9 +226,9 @@ public class SortedSetOpt<T> {
                     ZINCRBY_SCRIPT,
                     getKey(),
                     Arrays.asList(
-                            String.valueOf(score),
+                            Double.toString(score),
                             member,
-                            String.valueOf(lingQueRedis.ttl)
+                            Long.toString(lingQueRedis.ttl)
                     )
             );
             return result == null ? 0 : Double.valueOf(result.toString());
@@ -241,6 +241,9 @@ public class SortedSetOpt<T> {
      * @return true-删除成功 false-删除失败
      */
     public boolean delete(String... members) {
+        if (members == null || members.length == 0){
+            return true;
+        }
         List<String> args =new ArrayList<>();
         args.addAll(Arrays.asList(members));
         args.add(lingQueRedis.getTTL().toString());
@@ -367,7 +370,7 @@ public class SortedSetOpt<T> {
             Object result = jedis.eval(
                     ZREMRANGEBYRANK_SCRIPT,
                     getKey(),
-                    Arrays.asList(String.valueOf(startRank), String.valueOf(stopRank),String.valueOf(lingQueRedis.getTTL()))
+                    Arrays.asList(Long.toString(startRank), Long.toString(stopRank),Long.toString(lingQueRedis.getTTL()))
             );
             return (Long) result > 0;
         });
@@ -381,15 +384,26 @@ public class SortedSetOpt<T> {
      * @return 成员信息列表，包含成员ID、分数和排名
      */
     public List<RedisRank> getByScoreRange(double minScore, double maxScore, int limit) {
-        List<String> params = new ArrayList<>();
-        params.add(String.valueOf(minScore));
-        params.add(String.valueOf(maxScore));
-        params.add(String.valueOf(limit));
+      return getByScoreRange(Double.toString(minScore), Double.toString(maxScore), limit);
+    }
+
+    /**
+     * 根据分数范围获取成员信息列表
+     * @param minScore 最小分数
+     * @param maxScore 最大分数
+     * @param limit 返回的最大数量
+     * @return 成员信息列表，包含成员ID、分数和排名
+     */
+    public List<RedisRank> getByScoreRange(long minScore, long maxScore, int limit) {
+        return getByScoreRange(Long.toString(minScore), Long.toString(maxScore), limit);
+    }
+
+    private List<RedisRank> getByScoreRange(String minScore, String maxScore, int limit) {
         return (List<RedisRank>)lingQueRedis.execBase((jedis) -> {
             Object result = jedis.eval(
                     GET_BY_SCORE_RANGE_SCRIPT,
                     getKey(),
-                    params
+                    Arrays.asList(minScore,maxScore,Integer.toString(limit))
             );
 
             if (result == null) {
@@ -409,6 +423,14 @@ public class SortedSetOpt<T> {
 
             return rankList;
         });
+
     }
+
+    public List<String> getMembers(double minScore, double maxScore){
+        return (List<String>)lingQueRedis.execBase((jedis) -> {
+         return   jedis.zrangeByScore(lingQueRedis.key,minScore,maxScore);
+        });
+    }
+
 
 }

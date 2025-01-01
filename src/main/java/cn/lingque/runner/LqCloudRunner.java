@@ -56,7 +56,8 @@ public class LqCloudRunner {
             lqProperties.setServerHost(IpUtil.getLocalIp());
         }
         if (lqProperties.getServerPort() == null){
-            lqProperties.setServerPort(Integer.parseInt(LqSpringUtil.getProperty("server.port")));
+            String port = LqSpringUtil.getProperty("server.port");
+            lqProperties.setServerPort(Integer.parseInt(LQUtil.defaultString(port,"8080")));
         }
     }
 
@@ -86,13 +87,14 @@ public class LqCloudRunner {
         LQRegisterCenter.start();
     }
 
-    public static void main(String[] args) {
-        LQProperties lqProperties = new LQProperties();
-        lqProperties.setServerHost("127.0.0.1");
-        lqProperties.setServerPort(9999);
-        lqProperties.setServerName("lq_ss");
-        LqCloudRunner lqCloudRunner = new LqCloudRunner(lqProperties);
-        LQKey ks = LQKey.key("lll",1D,10L);
-        ks.rd().ofZSet().delete("123");
-    }
+//    public static void main(String[] args) {
+//        LQProperties lqProperties = new LQProperties();
+//        lqProperties.setServerHost("127.0.0.1");
+//        lqProperties.setServerPort(9999);
+//        lqProperties.setServerName("lq_ss");
+//        lqProperties.setDb(1);
+//        LqCloudRunner lqCloudRunner = new LqCloudRunner(lqProperties);
+//        LQKey ks = LQKey.key("lll",1D,10L);
+//        ks.rd().ofZSet().delete("123");
+//    }
 }
