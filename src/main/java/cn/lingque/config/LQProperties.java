@@ -1,12 +1,12 @@
 package cn.lingque.config;
 
+import cn.lingque.console.config.LqConsoleConfig;
 import lombok.Data;
 import lombok.experimental.Accessors;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
 import java.util.List;
-import java.util.Set;
 
 /**
  * @author aisen
@@ -25,18 +25,25 @@ public class LQProperties {
     private String port = "6379";
     /**redis的数据库，默认0*/
     private Integer db = 0;
+    /**redis的数据连接名*/
+    private String username;
     /**redis的数据库连接密码，默认为空*/
     private String password;
-    /**redis最大连接数*/
-    private int maxTotal= 10;
-    /**redis最大空闲连接数*/
-    private int maxIdle = 10;
-    /**redis最小空闲连接数*/
+    /**redis最大连接数
+     * 参考 lettuce 默认值：最大连接数设为8*/
+    private int maxTotal = 8;
+    /**redis最大空闲连接数
+     * 参考 lettuce 默认值：最大空闲连接数设为8*/
+    private int maxIdle = 8;
+    /**redis最小空闲连接数
+     * 参考 lettuce 默认值：最小空闲连接数设为0*/
     private int minIdle = 0;
-    /**redis最大等待时间*/
-    private long maxWaitMillis =60000L;
-    /**redis连接超时时间*/
-    private int timeout=18000;
+    /**redis最大等待时间
+     * 参考 lettuce 默认值：设置为-1表示无限等待*/
+    private long maxWaitMillis = -1L;
+    /**redis连接超时时间
+     * 参考 spring-boot-redis 默认值：设置为2000毫秒*/
+    private int timeout = 2000;
     /**主线程池*/
     private LQThreadPoolProperties masterPool = new LQThreadPoolProperties();
     /**辅助线程池*/
@@ -61,8 +68,10 @@ public class LQProperties {
     private RedisPlusBusProperties bus = new RedisPlusBusProperties();
     //-------------------------------------配置中心-------------------------------------------//
     /**配置中心*/
-    private RedisPlusConfigCenterProperties configCenter = new RedisPlusConfigCenterProperties();
+    private LqConfigCenterProperties configCenter = new LqConfigCenterProperties();
 
+    /**控制台*/
+    private LqConsoleConfig console = new LqConsoleConfig();
 
 
     /**哨兵*/
@@ -90,15 +99,6 @@ public class LQProperties {
         private String serverName = "ling-server";
         /**是否开启消息总线，默认开启*/
         private Boolean enable = true;
-    }
-
-    /**配置中心*/
-    @Data
-    public class RedisPlusConfigCenterProperties{
-        /**配置ID，默认：serverName*/
-        private String configId;
-        /**配置分组*/
-        private String group = "ling-que";;
     }
 
 }

@@ -1,10 +1,7 @@
 package cn.lingque.redis;
 
 import cn.lingque.config.LQProperties;
-import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Configuration;
 import redis.clients.jedis.Jedis;
 
 /**
@@ -12,6 +9,7 @@ import redis.clients.jedis.Jedis;
  */
 @Slf4j
 public class JedisProxy {
+
     private volatile static RedisInstance redisInstance;
 
     public static void init(LQProperties redisPlusProperties){

@@ -2,6 +2,7 @@ package cn.lingque.redis;
 
 import cn.hutool.json.JSONUtil;
 import cn.lingque.config.LQProperties;
+import cn.lingque.util.TryCatch;
 import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
 import redis.clients.jedis.*;
 
@@ -27,19 +28,31 @@ public class RedisInstance {
     public RedisInstance(LQProperties redisPlusProperties) {
         // 配置连接池
         JedisPoolConfig poolConfig = new JedisPoolConfig();
-        // 最大连接数
+        // 增加最大连接数
         poolConfig.setMaxTotal(redisPlusProperties.getMaxTotal());
-        // 最大空闲连接数
+        // 增加最大空闲连接数
         poolConfig.setMaxIdle(redisPlusProperties.getMaxIdle());
-        // 最小空闲连接数
+        // 设置最小空闲连接数
         poolConfig.setMinIdle(redisPlusProperties.getMinIdle());
         // 当池内没有可用连接时，最大等待时间
         Duration maxWait = Duration.ofMillis(redisPlusProperties.getMaxWaitMillis());
         poolConfig.setMaxWait(maxWait);
-        // 对拿到的connection进行validateObject校验
+        // 开启jmx监控
+        poolConfig.setJmxEnabled(true);
+        // 连接对象后进先出
+        poolConfig.setLifo(false);
+        // 在获取连接时检查有效性
         poolConfig.setTestOnBorrow(true);
-        // 定时对线程池中空闲的链接进行validateObject校验
+        // 在归还连接时检查有效性
+        poolConfig.setTestOnReturn(true);
+        // 定时检查空闲连接
         poolConfig.setTestWhileIdle(true);
+        // 空闲连接检查间隔时间
+        poolConfig.setTimeBetweenEvictionRuns(Duration.ofMillis(30000));
+        // 每次检查空闲连接的数量
+        poolConfig.setNumTestsPerEvictionRun(3);
+        // 连接最小空闲时间
+        poolConfig.setMinEvictableIdleTime(Duration.ofMillis(1800000));
 
         try {
             switch (redisPlusProperties.getMode().toLowerCase()) {
@@ -74,7 +87,7 @@ public class RedisInstance {
                 props.getIp(),
                 Integer.parseInt(props.getPort()),
                 props.getTimeout(),
-                "",
+                props.getUsername(),
                 props.getPassword(),
                 props.getDb()
         );
@@ -122,11 +135,30 @@ public class RedisInstance {
             return sentinel.getResource();
         } else if ("cluster".equalsIgnoreCase(mode)) {
             // Cluster mode configuration
-            return new Jedis(cluster.getClusterNodes().values().iterator().next().getResource());
+            ConnectionPool pool = cluster.getClusterNodes().values().stream().findAny().get();
+            return new JedisObj(pool,pool.getResource());
         }else {
             // Standalone mode configuration
             return standalone.getResource();
         }
     }
+
+    public synchronized void closeJedis(Jedis jedis) {
+        TryCatch.trying(()->{
+           switch (mode){
+               case "standalone":
+                   standalone.returnResource(jedis);
+                   break;
+               case "sentinel":
+                   sentinel.returnResource(jedis);
+                   break;
+               case "cluster":
+                   ((JedisObj)jedis).returnResource();
+                   break;
+           }
+        },"closeJedis回收资源");
+    }
+
+
 
 }

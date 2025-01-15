@@ -3,19 +3,16 @@ package cn.lingque.redis.exten;
 import cn.lingque.redis.LingQueRedis;
 import lombok.AllArgsConstructor;
 import redis.clients.jedis.GeoCoordinate;
-import redis.clients.jedis.Jedis;
 import redis.clients.jedis.args.GeoUnit;
 import redis.clients.jedis.params.GeoRadiusParam;
 import redis.clients.jedis.params.GeoRadiusStoreParam;
 import redis.clients.jedis.resps.GeoRadiusResponse;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @AllArgsConstructor
-public class GeoOps<T> {
-    private LingQueRedis<T> lingQueRedis;
+public class GeoOpt extends BaseOpt{
+    private LingQueRedis lingQueRedis;
 
     private static final String ADD_GEO_SCRIPT = 
         "redis.call('GEOADD', KEYS[1], ARGV[1], ARGV[2], ARGV[3]); " +
@@ -44,9 +41,7 @@ public class GeoOps<T> {
        return (long)lingQueRedis.execBase((jedis) -> {
             return (Long) jedis.eval(
                     BATCH_ADD_GEO_SCRIPT,
-                    new ArrayList<String>() {{
-                        add(lingQueRedis.key);
-                    }},
+                    Arrays.asList(lingQueRedis.key),
                     paras
             );
         });

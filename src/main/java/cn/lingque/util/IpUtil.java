@@ -1,5 +1,7 @@
 package cn.lingque.util;
 
+import jakarta.servlet.http.HttpServletRequest;
+
 import java.net.*;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -118,5 +120,31 @@ public class IpUtil {
             }
         }
         return publicIp;
+    }
+
+    /**
+     * 获取用户真实ip
+     *
+     * @param request 请求
+     * @return 真实IP
+     */
+    public static String getRealIpAddr(HttpServletRequest request) {
+        String ip = request.getHeader("x-forwarded-for");
+        if ((ip == null) || (ip.length() == 0) || ("unknown".equalsIgnoreCase(ip))) {
+            ip = request.getHeader("Proxy-Client-IP");
+        }
+        if ((ip == null) || (ip.length() == 0) || ("unknown".equalsIgnoreCase(ip))) {
+            ip = request.getHeader("WL-Proxy-Client-IP");
+        }
+        if ((ip == null) || (ip.length() == 0) || ("unknown".equalsIgnoreCase(ip))) {
+            ip = request.getRemoteAddr();
+        }
+        if ((ip != null) && (ip.length() > 32)) {
+            ip = ip.substring(0, 32);
+        }
+        if (ip == null) {
+            ip = "";
+        }
+        return ip;
     }
 }

@@ -6,11 +6,17 @@
 
     <groupId>io.github.aisen1024</groupId>
     <artifactId>lq-cloud</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.4</version>
     <packaging>jar</packaging>
     <description>spring cloud 下一代微服务架构</description>
     <url>https://github.com/aisen1024/lq-cloud</url>
 
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.2.4</version>
+        <relativePath/> <!-- lookup parent from repository -->
+    </parent>
 
     <licenses>
         <license>
@@ -49,10 +55,10 @@
     <dependencies>
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter</artifactId>
+            <artifactId>spring-boot-starter-web</artifactId>
             <version>3.2.4</version>
-            <scope>provided</scope>
         </dependency>
+
         <dependency>
             <groupId>redis.clients</groupId>
             <artifactId>jedis</artifactId>
@@ -68,6 +74,7 @@
             <artifactId>hutool-all</artifactId>
             <version>5.8.16</version>
         </dependency>
+
         <dependency>
             <groupId>io.netty</groupId>
             <artifactId>netty-resolver-dns-native-macos</artifactId>
@@ -161,7 +168,6 @@
                 <configuration>
                     <publishingServerId>central</publishingServerId>
                     <checksums>required</checksums>
-                    <tokenAuth>true</tokenAuth>
                     <deploymentName>lq-cloud</deploymentName>
                 </configuration>
             </plugin>

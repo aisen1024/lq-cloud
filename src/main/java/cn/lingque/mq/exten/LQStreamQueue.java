@@ -17,7 +17,7 @@ import java.util.*;
 @Slf4j
 @AllArgsConstructor
 public class LQStreamQueue<T> {
-    private final LingQueRedis<T> redis;
+    private final LingQueRedis redis;
     private static final String STREAM_ADD_SCRIPT = 
         "local result = redis.call('XADD', KEYS[1], ARGV[1], ARGV[2], ARGV[3]); " +
         "redis.call('EXPIRE', KEYS[1], ARGV[4]); " +

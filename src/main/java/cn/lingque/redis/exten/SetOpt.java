@@ -11,10 +11,10 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Data
-public class SetOpt<T> {
-    private LingQueRedis<T> lingQueRedis;
+public class SetOpt extends BaseOpt{
+    private LingQueRedis lingQueRedis;
 
-    public SetOpt(LingQueRedis<T> lingQueRedis) {
+    public SetOpt(LingQueRedis lingQueRedis) {
         this.lingQueRedis = lingQueRedis;
     }
 
@@ -94,17 +94,21 @@ public class SetOpt<T> {
      * @param count
      * @return
      */
-    public List<T> randomMembers(Class<T> targetClass, Integer count) {
+    public <T> List<T> randomMembers(Class<T> targetClass, Integer count) {
         return(List<T>)lingQueRedis.execBase((jedis) -> {
             List<String> set = jedis.srandmember(lingQueRedis.key, count);
             if (null == set || set.isEmpty()) {
                 return Collections.emptyList();
             }
-            List<T> list = new ArrayList<>();
-            set.forEach(s->{
-                list.add(LQUtil.isBasClass(targetClass) ? LQUtil.baseClassTran(s, targetClass) : JSONUtil.toBean(s, targetClass));
-            });
-            return list;
+            try {
+                List<T> list = new ArrayList<>();
+                set.forEach(s->{
+                    list.add(LQUtil.isBasClass(targetClass) ? LQUtil.baseClassTran(s, targetClass) : JSONUtil.toBean(s, targetClass));
+                });
+                return list;
+            }catch (Exception e){
+                return Collections.emptyList();
+            }
         });
     }
 
@@ -126,7 +130,7 @@ public class SetOpt<T> {
      * 获取set集合元素
      * @return
      */
-    public List<T> getMembers(Class<T> targetClass) {
+    public <T> List<T> getMembers(Class<T> targetClass) {
         return(List<T>)lingQueRedis.execBase((jedis) -> {
             Set<String> set = jedis.smembers(lingQueRedis.key);
             if (null == set || set.isEmpty()) {
@@ -168,7 +172,7 @@ public class SetOpt<T> {
      * @param targetClass 目标类型
      * @return 弹出的元素列表
      */
-    public List<T> pops(long count, Class<T> targetClass) {
+    public <T> List<T> pops(long count, Class<T> targetClass) {
         String luaScript = 
             "local result = redis.call('SPOP', KEYS[1], ARGV[1])\n" +
             "if redis.call('EXISTS', KEYS[1]) == 1 then\n" +
@@ -188,8 +192,12 @@ public class SetOpt<T> {
             if (result == null) {
                 return Collections.emptyList();
             }
-            List<Object> list = (List<Object>) result;
-            return list.stream().map(r->LQUtil.isBasClass(targetClass)?LQUtil.baseClassTran(r,targetClass) : JSONUtil.toBean(r.toString(),targetClass)).collect(Collectors.toList());
+            try {
+                List<Object> list = (List<Object>) result;
+                return list.stream().map(r->LQUtil.isBasClass(targetClass)?LQUtil.baseClassTran(r,targetClass) : JSONUtil.toBean(r.toString(),targetClass)).collect(Collectors.toList());
+            }catch (Exception e){
+                return Collections.emptyList();
+            }
         });
     }
 

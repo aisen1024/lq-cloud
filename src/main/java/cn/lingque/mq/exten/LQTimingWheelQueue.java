@@ -15,7 +15,7 @@ import java.util.List;
 @Slf4j
 @AllArgsConstructor
 public class LQTimingWheelQueue<T> implements IMQConsumer<ITimingWheelHandle<T>,T> {
-    private final LingQueRedis<T> redis;
+    private final LingQueRedis redis;
 
     private static final String DATE_KEY = "$HLH$";
 

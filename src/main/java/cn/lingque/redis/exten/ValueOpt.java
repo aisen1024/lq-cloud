@@ -15,8 +15,8 @@ import redis.clients.jedis.Jedis;
 
 @Data
 @AllArgsConstructor
-public class ValueOpt<T> {
-    private LingQueRedis<T> lingQueRedis;
+public class ValueOpt extends BaseOpt{
+    private LingQueRedis lingQueRedis;
 
     /**
      * 设置缓存，不存在时设置
@@ -242,7 +242,7 @@ public class ValueOpt<T> {
      * @param targetClass
      * @return
      */
-    public List<T> getListValue(Class<T> targetClass) {
+    public <T> List<T> getListValue(Class<T> targetClass) {
         String json = getValue(String.class);
         if (LQUtil.isNotEmpty(json)) {
             return JSONUtil.toList(json, targetClass);
@@ -287,7 +287,7 @@ public class ValueOpt<T> {
      * @param targetClass
      * @return
      */
-    public List<T> execListPlus(Class<T> targetClass, Boolean isSetNull, Supplier<List<T>> function) {
+    public <T> List<T> execListPlus(Class<T> targetClass, Boolean isSetNull, Supplier<List<T>> function) {
         Object result = getValue(targetClass);
         if (getLingQueRedis().isNullCache(result)) {
             return Collections.emptyList();
@@ -311,7 +311,7 @@ public class ValueOpt<T> {
      * @param function
      * @return
      */
-    public List<T> execListPlusLazyLoad(Class<T> targetClass, Boolean isSetNull, Supplier<List<T>> function) {
+    public <T> List<T> execListPlusLazyLoad(Class<T> targetClass, Boolean isSetNull, Supplier<List<T>> function) {
         Object result = getValue(String.class);
         if (getLingQueRedis().isNullCache(result)) {
             return Collections.emptyList();
@@ -333,7 +333,7 @@ public class ValueOpt<T> {
         //过时了，试着去更新
         if (cacheBean.isOutTime()) {
             try {
-                    CacheBean updateBean = getLingQueRedis().lockFuture(() -> {
+                    CacheBean updateBean = (CacheBean) getLingQueRedis().ofLock().<CacheBean>lockFuture(() -> {
                     List<T> tl = function.get();
                     CacheBean cache = new CacheBean(getLingQueRedis().ttl, tl);
                     if (null != tl) {

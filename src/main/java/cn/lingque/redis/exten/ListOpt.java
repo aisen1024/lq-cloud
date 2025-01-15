@@ -17,9 +17,9 @@ import java.util.stream.Collectors;
  * @desc 简单说一下
  **/
 @AllArgsConstructor
-public class ListOpt<T> {
+public class ListOpt extends BaseOpt{
 
-    private LingQueRedis<T> lingQueRedis;
+    private LingQueRedis lingQueRedis;
 
     // 添加 Lua 脚本常量
     private static final String DELETE_FIRST_SCRIPT =
@@ -149,7 +149,7 @@ public class ListOpt<T> {
      * @param pageSize
      * @return
      */
-    public List<T> page(Class<T> targetClass, Integer page, Integer pageSize) {
+    public <T> List<T> page(Class<T> targetClass, Integer page, Integer pageSize) {
         page = null == page || page < 1 ? 1 : page;
         pageSize = null == pageSize || pageSize < 1 ? 10 : pageSize;
         Integer offset = (page - 1) * pageSize;
@@ -263,7 +263,12 @@ public class ListOpt<T> {
             if (result == null) {
                 return Collections.emptyList();
             }
-            return JSONUtil.toList(JSONUtil.toJsonStr(result), String.class);
+            try {
+                return JSONUtil.toList(JSONUtil.toJsonStr(result), String.class);
+            }catch (Exception e){
+                return Collections.emptyList();
+            }
+
         });
     }
 
@@ -292,7 +297,11 @@ public class ListOpt<T> {
             if (result == null) {
                 return Collections.emptyList();
             }
-            return JSONUtil.toList(result.toString(), String.class);
+            try {
+                return JSONUtil.toList(result.toString(), String.class);
+            }catch (Exception e){
+                return Collections.emptyList();
+            }
         });
     }
 

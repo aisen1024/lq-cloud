@@ -1,8 +1,6 @@
 package cn.lingque;
 
-import cn.lingque.config.LQProperties;
 import org.springframework.context.annotation.Import;
-
 import java.lang.annotation.*;
 
 /**
@@ -12,5 +10,4 @@ import java.lang.annotation.*;
 @Retention(RetentionPolicy.RUNTIME)
 @Import(value = {LqRootScanConfig.class})
 public @interface LQStarterEnable {
-
 }

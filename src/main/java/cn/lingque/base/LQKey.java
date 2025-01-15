@@ -2,7 +2,13 @@ package cn.lingque.base;
 
 import cn.hutool.core.date.DateField;
 import cn.hutool.core.date.DateUtil;
+import cn.lingque.mq.exten.LQLazyQueue;
+import cn.lingque.mq.exten.LQSequenceQueue;
+import cn.lingque.mq.exten.LQTimingWheelQueue;
+import cn.lingque.mq.exten.LQUniqueQueue;
 import cn.lingque.redis.LingQueRedis;
+import cn.lingque.redis.exten.*;
+import cn.lingque.scene.LQScene;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
@@ -11,7 +17,7 @@ import java.util.Random;
 
 /**
  * <p>
- *  基础缓存key  三要素：key前缀，版本号，过时时间
+ * 基础缓存key  三要素：key前缀，版本号，过时时间
  * </p>
  *
  * @author zlm
@@ -34,7 +40,17 @@ public class LQKey<T> {
      */
     protected Long ttl;
 
-    public static LQKey key(String prefixKey, Double version, Long ttl){
+
+    /**空缓存值*/
+    public String NULL_VALUE = "$$NULL$$";
+
+    /**默认内置的成功标记*/
+    public String OK = "ok";
+
+    /**默认内置的失败标记*/
+    public String FAIL = "fail";
+
+    public static LQKey key(String prefixKey, Double version, Long ttl) {
         LQKey LQRKey = new LQKey();
         LQRKey.prefixKey = prefixKey;
         LQRKey.version = version;
@@ -42,18 +58,63 @@ public class LQKey<T> {
         return LQRKey;
     }
 
+    public ValueOpt ofV(Object... params) {
+        return new ValueOpt(rd(params));
+    }
+
+    public SetOpt ofS(Object... params) {
+        return new SetOpt(rd(params));
+    }
+
+    public SortedSetOpt ofZ(Object... params) {
+        return new SortedSetOpt(rd(params));
+    }
+
+    public HashOpt ofH(Object... params) {
+        return new HashOpt(rd(params));
+    }
+
+    public GeoOpt ofG(Object... params) {
+        return new GeoOpt(rd(params));
+    }
+
+    public ListOpt ofL(Object... params) {
+        return new ListOpt(rd(params));
+    }
+
+    public LQScene ofScene(Object... params) {
+        return new LQScene(rd(params));
+    }
+
+    public LQLazyQueue<T> ofLazyQueue(Object... params) {
+        return new LQLazyQueue(rd(params));
+    }
+
+    public LQSequenceQueue<T> ofSequenceQueue(Object... params) {
+        return new LQSequenceQueue(rd(params));
+    }
+
+    public LQTimingWheelQueue<T> ofTimingWheelQueue(Object... params) {
+        return new LQTimingWheelQueue(rd(params));
+    }
+
+    public LQUniqueQueue<T> ofUniqueQueue(Object... params) {
+        return new LQUniqueQueue(rd(params));
+    }
+
 
     /**
      * 构建一个完整的key
+     *
      * @param params
      * @return
      */
-    public String buildKey(Object ...params){
+    public String buildKey(Object... params) {
         StringBuilder newKey = new StringBuilder(prefixKey);
-        for (Object p : params){
-            if (p instanceof Long){
-                newKey.append(":").append(Long.toString((long)p));
-            }else {
+        for (Object p : params) {
+            if (p instanceof Long) {
+                newKey.append(":").append(Long.toString((long) p));
+            } else {
                 newKey.append(":").append(p.toString());
             }
         }
@@ -61,16 +122,19 @@ public class LQKey<T> {
         return newKey.toString();
     }
 
-    /**构建redis*/
-    public LingQueRedis rd(Object ...params){
-        return LingQueRedis.ofKey(this,params);
+    /**
+     * 构建redis
+     */
+    public LingQueRedis rd(Object... params) {
+        return LingQueRedis.ofKey(this, params);
     }
 
     /**
      * 设置缓存时间
+     *
      * @return
      */
-    public Long getTtl(){
+    public Long getTtl() {
         return ttl;
     }
 
@@ -104,12 +168,11 @@ public class LQKey<T> {
 
     public static final Long ONE_MONTH = 86400 * 30L;
 
-    public static final Long FOREVER = DateUtil.offset(new Date(), DateField.YEAR,100).getTime() / 1000L; //永久
+    public static final Long FOREVER = DateUtil.offset(new Date(), DateField.YEAR, 100).getTime() / 1000L; //永久
 
     private static final Random RAND = new Random();
 
     public static Long random12HTo24H() {
         return (RAND.nextInt(13) + 12) * ONE_HOUR * 1L;
     }
-
 }

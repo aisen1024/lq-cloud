@@ -19,7 +19,7 @@ import java.util.List;
 @AllArgsConstructor
 public class LQSequenceQueue<T> implements  IMQConsumer<ILQMessage<T>,T>{
 
-    private final LingQueRedis<T> redis;
+    private final LingQueRedis redis;
 
     /**
      * 默认发送MQ

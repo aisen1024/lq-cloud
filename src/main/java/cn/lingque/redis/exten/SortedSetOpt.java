@@ -1,6 +1,5 @@
 package cn.lingque.redis.exten;
 
-import cn.hutool.json.JSONUtil;
 import cn.lingque.redis.LingQueRedis;
 import cn.lingque.redis.bean.RedisRank;
 import cn.lingque.util.LQUtil;
@@ -11,8 +10,8 @@ import java.util.*;
 
 @Data
 @AllArgsConstructor
-public class SortedSetOpt<T> {
-    private LingQueRedis<T> lingQueRedis;
+public class SortedSetOpt extends BaseOpt{
+    private LingQueRedis lingQueRedis;
 
     // Lua 脚本常量
     private static final String ZADD_SCRIPT = 
@@ -293,22 +292,19 @@ public class SortedSetOpt<T> {
                     params
             );
         });
-
-        if (result == null) {
-            return new ArrayList<>();
-        }
-        
-        List<Object> resultList = (List<Object>) result;
         List<RedisRank> rankList = new ArrayList<>();
-        
-        // 每三个元素组成一个 RedisRank 对象
-        for (int i = 0; i < resultList.size(); i += 3) {
-            String member = resultList.get(i).toString();
-            Double score = Double.valueOf(resultList.get(i + 1).toString());
-            Long rank = Long.valueOf(resultList.get(i + 2).toString());
-            rankList.add(new RedisRank(member, score, rank));
+        try {
+            List<Object> resultList = (List<Object>) result;
+            // 每三个元素组成一个 RedisRank 对象
+            for (int i = 0; i < resultList.size(); i += 3) {
+                String member = resultList.get(i).toString();
+                Double score = Double.valueOf(resultList.get(i + 1).toString());
+                Long rank = Long.valueOf(resultList.get(i + 2).toString());
+                rankList.add(new RedisRank(member, score, rank));
+            }
+        }catch (Exception e){
+            //忽略
         }
-        
         return rankList;
     }
     /**
@@ -346,17 +342,21 @@ public class SortedSetOpt<T> {
         if (result == null) {
             return new RedisRank(memberId, 0D, null);
         }
-        
-        List<Object> resultList = (List<Object>) result;
-        if (resultList.isEmpty()) {
-            return new RedisRank(memberId, 0D, null);
+        try {
+            List<Object> resultList = (List<Object>) result;
+            if (resultList.isEmpty()) {
+                return new RedisRank(memberId, 0D, null);
+            }
+
+            return new RedisRank(
+                    resultList.get(0).toString(),
+                    Double.valueOf(resultList.get(1).toString()),
+                    Long.valueOf(resultList.get(2).toString())
+            );
+        }catch (Exception e){
+            return  new RedisRank(memberId, 0D, null);
         }
-        
-        return new RedisRank(
-            resultList.get(0).toString(),
-            Double.valueOf(resultList.get(1).toString()),
-            Long.valueOf(resultList.get(2).toString())
-        );
+
     }
 
     /**
@@ -409,16 +409,18 @@ public class SortedSetOpt<T> {
             if (result == null) {
                 return new ArrayList<>();
             }
-
-            List<Object> resultList = (List<Object>) result;
             List<RedisRank> rankList = new ArrayList<>();
-
-            // 每三个元素组成一个 RedisRank 对象
-            for (int i = 0; i < resultList.size(); i += 3) {
-                String member = resultList.get(i).toString();
-                Double score = Double.valueOf(resultList.get(i + 1).toString());
-                Long rank = Long.valueOf(resultList.get(i + 2).toString());
-                rankList.add(new RedisRank(member, score, rank));
+            try {
+                List<Object> resultList = (List<Object>) result;
+                // 每三个元素组成一个 RedisRank 对象
+                for (int i = 0; i < resultList.size(); i += 3) {
+                    String member = resultList.get(i).toString();
+                    Double score = Double.valueOf(resultList.get(i + 1).toString());
+                    Long rank = Long.valueOf(resultList.get(i + 2).toString());
+                    rankList.add(new RedisRank(member, score, rank));
+                }
+            }catch (Exception e){
+                //忽略
             }
 
             return rankList;

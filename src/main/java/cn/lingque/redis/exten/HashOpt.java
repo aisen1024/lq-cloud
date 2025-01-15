@@ -10,8 +10,8 @@ import java.util.*;
 
 @Data
 @AllArgsConstructor
-public class HashOpt<T> {
-    private LingQueRedis<T> lingQueRedis;
+public class HashOpt extends BaseOpt{
+    private LingQueRedis lingQueRedis;
 
     /**
      * 设置哈希缓存并更新过期时间
@@ -43,7 +43,7 @@ public class HashOpt<T> {
      * @param map 要设置的键值对
      * @return 操作结果
      */
-    public long setMap(Map<String, T> map) {
+    public long setMap(Map<String, Object> map) {
         String luaScript = 
             "local result = 0\n" +
             "for i = 1, #ARGV - 1, 2 do\n" +
@@ -54,7 +54,7 @@ public class HashOpt<T> {
 
         return (Long)lingQueRedis.execBase((jedis) -> {
             List<String> args = new ArrayList<>();
-            for (Map.Entry<String, T> entry : map.entrySet()) {
+            for (Map.Entry<String, Object> entry : map.entrySet()) {
                 args.add(entry.getKey());
                 args.add(LQUtil.isBaseValue(entry.getValue()) ? 
                     entry.getValue().toString() : 
@@ -149,7 +149,7 @@ public class HashOpt<T> {
     /**
      * 获取哈希缓存返回list数据
      */
-    public List<T> getFieldValueToList(String member, Class<T> targetClass) {
+    public <T> List<T> getFieldValueToList(String member, Class<T> targetClass) {
         return (List<T>)lingQueRedis.execBase((jedis) -> {
             String val = jedis.hget(lingQueRedis.key, member);
             if (LQUtil.isEmpty(val)) {
@@ -181,7 +181,7 @@ public class HashOpt<T> {
     /**
      * 列出哈希的键值对
      */
-    public Map<String, T> entriesHashValue(Class<T> targetClass) {
+    public <T> Map<String, T> entriesHashValue(Class<T> targetClass) {
         return (Map<String, T>)lingQueRedis.execBase((jedis) -> {
             Map<String, T> resultMap = new HashMap<>();
             Map<String, String> entries = jedis.hgetAll(lingQueRedis.key);
