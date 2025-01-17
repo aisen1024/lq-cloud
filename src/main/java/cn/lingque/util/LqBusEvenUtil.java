@@ -24,7 +24,7 @@ public class LqBusEvenUtil {
      * @param isNotSendSelf 是否不发自己节点，true 不发自己，false 同时发自己
      */
     public static void sendBusEven(String topic, String msg, boolean isNotSendSelf) {
-        LQBus.sendBus(LQBus.serverName, topic, msg, isNotSendSelf);
+        LQBus.sendBus(LQBus.serverName.iterator().next(), topic, msg, isNotSendSelf);
     }
 
     /**

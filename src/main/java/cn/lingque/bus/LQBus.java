@@ -9,10 +9,7 @@ import cn.lingque.util.TryCatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -22,12 +19,13 @@ public class LQBus {
 
     private final static LQKey LQ_BUS_MESSAGE_CHANNEL = LQKey.key("LQ:BUS:MESSAGE:CHANNEL",1D,LQKey.TEN_MINUTE);
 
-    public volatile static String serverName;
+    //如果需要订阅更多的服务则需要LQBus.startBus注册服务，注意，如果注册了服务，如果注册是别的服务名，则会抢消息
+    public volatile static Set<String> serverName = new HashSet<>();
     /**
      * 采用CAS锁来做创建Bus节点
      */
     private static AtomicInteger isInit = new AtomicInteger(0);
-
+    //bus的订阅者
     private volatile static Map<String,List<BusHandleBeanInfo>> busMap = new ConcurrentHashMap<>();
 
 
@@ -57,7 +55,7 @@ public class LQBus {
      * @param serverName
      */
    public static void startBus(String serverName){
-       LQBus.serverName = serverName;
+       LQBus.serverName.add(serverName);
        if (isInit.compareAndSet(0,1)){
             new Thread(()->{
                 while (true){
@@ -65,20 +63,21 @@ public class LQBus {
                     if (busMap.isEmpty()){
                         continue;
                     }
-                    TryCatch.trying(()->{
-                      List<LQBusMessageBean> list = LQ_BUS_MESSAGE_CHANNEL.rd(LQBus.serverName).ofSet().pops(10, LQBusMessageBean.class);
-                      if (!list.isEmpty()){
-                          hasMessage.set(true);
-                          list.forEach(msg->{
-                              System.out.println(msg.getMsg());
-                              List<BusHandleBeanInfo> beanInfos = busMap.get(msg.getTopic());
-                              if (!beanInfos.isEmpty()){
-                                  beanInfos.forEach((b)->TryCatch.trying(()->LQThreadUtil.execSlave(()->{
-                                            b.getBusHandle().handle(LQUtil.isBasClass(b.getEntityClass())?LQUtil.baseClassTran(msg.getMsg(),b.getEntityClass()) : LQUtil.jsonToBean(msg.getMsg(),b.getEntityClass()));
-                                  })));
-                              }
-                          });
-                      }
+                    TryCatch.trying(()-> {
+                        for (String sv : LQBus.serverName) {
+                            List<LQBusMessageBean> list = LQ_BUS_MESSAGE_CHANNEL.ofS(sv).pops(10, LQBusMessageBean.class);
+                            if (!list.isEmpty()) {
+                                hasMessage.set(true);
+                                list.forEach(msg -> {
+                                    List<BusHandleBeanInfo> beanInfos = busMap.get(msg.getTopic());
+                                    if (!beanInfos.isEmpty()) {
+                                        beanInfos.forEach((b) -> TryCatch.trying(() -> LQThreadUtil.execSlave(() -> {
+                                            b.getBusHandle().handle(LQUtil.isBasClass(b.getEntityClass()) ? LQUtil.baseClassTran(msg.getMsg(), b.getEntityClass()) : LQUtil.jsonToBean(msg.getMsg(), b.getEntityClass()));
+                                        })));
+                                    }
+                                });
+                            }
+                        }
                     });
                     if (!hasMessage.get()){
                         TryCatch.trying(()->{

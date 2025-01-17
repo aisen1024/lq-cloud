@@ -3,6 +3,7 @@ package cn.lingque.redis;
 import cn.hutool.json.JSONUtil;
 import cn.lingque.config.LQProperties;
 import cn.lingque.util.TryCatch;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
 import redis.clients.jedis.*;
 
@@ -11,6 +12,7 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+@Slf4j
 public class RedisInstance {
     /**哨兵模式*/
     private  JedisSentinelPool sentinel;
@@ -144,6 +146,7 @@ public class RedisInstance {
     }
 
     public synchronized void closeJedis(Jedis jedis) {
+        log.debug("回收资源---》jedis ->{}",jedis.hashCode());
         TryCatch.trying(()->{
            switch (mode){
                case "standalone":

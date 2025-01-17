@@ -72,7 +72,7 @@ public class LqMQListenerConfiguration implements BeanPostProcessor, Application
         };
 
         // 根据不同的队列类型注册处理器
-        LingQueRedis<?> redis = LingQueRedis.ofKey(key, LQKey.HALF_DAY);
+        LingQueRedis redis = LingQueRedis.ofKey(key, LQKey.HALF_DAY);
         switch (listener.type()) {
             case SEQUENCE:
                 LQMQConsumer.register(key, redis.ofSequenceQueue(), messageHandler);

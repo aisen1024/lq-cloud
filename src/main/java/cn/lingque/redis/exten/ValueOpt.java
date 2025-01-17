@@ -237,6 +237,18 @@ public class ValueOpt extends BaseOpt{
     }
 
     /**
+     * 获取缓存的值,支持基础类型和对象bean，空返回默认值
+     * @param targetClass
+     * @param defaultValue
+     * @return
+     * @param <T>
+     */
+    public <T> T getValue(Class<T> targetClass,T defaultValue) {
+        T value = getValue(targetClass);
+        return null == value ? defaultValue : value;
+    }
+
+    /**
      * 获取集合对象
      *
      * @param targetClass

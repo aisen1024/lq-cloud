@@ -1,5 +1,7 @@
 package cn.lingque.runner;
 
+import cn.hutool.crypto.digest.MD5;
+import cn.hutool.json.JSONUtil;
 import cn.lingque.base.LQKey;
 import cn.lingque.bus.LQBus;
 import cn.lingque.cloud.node.LQRegisterCenter;
@@ -29,11 +31,14 @@ public class LqCloudRunner {
         doInit(lqProperties);
 
         //启动注册中心
-        startRegisterCenter(lqProperties);
+        LQNodeInfo node = startRegisterCenter(lqProperties);
 
         //启动消息总线
         if (lqProperties.getBus().getEnable()){
+            //集群消息总线
             LQBus.startBus(lqProperties.getServerName());
+            //精准消息总线
+            LQBus.startBus(lqProperties.getServerName()+":"+ MD5.create().digestHex16(JSONUtil.toJsonStr(node)));
         }
 
         //启动MQ
@@ -77,7 +82,7 @@ public class LqCloudRunner {
      * 启动注册中心
      * @param lqProperties
      */
-    private void startRegisterCenter(LQProperties lqProperties){
+    private LQNodeInfo startRegisterCenter(LQProperties lqProperties){
         LQNodeInfo node = new LQNodeInfo();
         node.setNodeIp(lqProperties.getServerHost());
         node.setNodePort(lqProperties.getServerPort());
@@ -85,6 +90,7 @@ public class LqCloudRunner {
         LQRegisterCenter.registerNode(node);
         //启动注册服务中心
         LQRegisterCenter.start();
+        return node;
     }
 
 //    public static void main(String[] args) {

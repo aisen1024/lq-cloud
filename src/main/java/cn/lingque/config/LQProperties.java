@@ -26,7 +26,7 @@ public class LQProperties {
     /**redis的数据库，默认0*/
     private Integer db = 0;
     /**redis的数据连接名*/
-    private String username;
+    private String username="default";
     /**redis的数据库连接密码，默认为空*/
     private String password;
     /**redis最大连接数
