@@ -6,8 +6,11 @@ import cn.lingque.mq.exten.LQTimingWheelQueue;
 import cn.lingque.mq.exten.LQUniqueQueue;
 import cn.lingque.redis.exten.*;
 import cn.lingque.scene.LQScene;
+import cn.lingque.util.TryCatch;
 import lombok.extern.slf4j.Slf4j;
 import redis.clients.jedis.*;
+import redis.clients.jedis.exceptions.JedisConnectionException;
+
 import java.util.function.Supplier;
 
 /**
@@ -140,13 +143,15 @@ public class LingQueRedis extends BaseOpt{
      */
     public Object execBase(BaseSimpleExec exec){
         Jedis jedis = getRedisTemplate();
-        try {
+        try{
             return exec.exec(jedis);
-        }finally {
-            try {
-                JedisProxy.getRedisInstance().closeJedis(jedis);
-            } catch (Exception e) {
-                // 记录关闭连接时的异常，但不抛出
+        }catch (JedisConnectionException j){
+            JedisProxy.returnJedis(jedis,0);
+            jedis = null;
+            throw new RuntimeException(j);
+        } finally {
+            if (jedis != null) {
+                JedisProxy.returnJedis(jedis,1);
             }
         }
     }

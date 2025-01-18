@@ -495,6 +495,20 @@ public class LQUtil<T>{
         return WriteWord.opt();
     }
 
+    /**
+     * maxTotal 小于 min 返回 def 否则 返回 maxTotal
+     * @param maxTotal
+     * @param min
+     * @param def
+     * @return
+     */
+    public static Integer lt(Integer maxTotal, int min, int def) {
+        if (maxTotal == null){
+            return def;
+        }
+        return maxTotal < min ? def : maxTotal;
+    }
+
 
     /**
      * 文案对象

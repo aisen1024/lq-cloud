@@ -28,7 +28,7 @@ public class BaseOpt {
     }
 
     protected Jedis getRedisTemplate(){
-        return JedisProxy.getRedisInstance().getRedisTemplate();
+        return JedisProxy.getRedisInstance();
     }
 
 

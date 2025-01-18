@@ -31,19 +31,22 @@ public class LQProperties {
     private String password;
     /**redis最大连接数
      * 参考 lettuce 默认值：最大连接数设为8*/
-    private int maxTotal = 8;
+    private int maxTotal = 50;
     /**redis最大空闲连接数
      * 参考 lettuce 默认值：最大空闲连接数设为8*/
-    private int maxIdle = 8;
+    private int maxIdle = 20;
     /**redis最小空闲连接数
      * 参考 lettuce 默认值：最小空闲连接数设为0*/
-    private int minIdle = 0;
+    private int minIdle = 10;
     /**redis最大等待时间
      * 参考 lettuce 默认值：设置为-1表示无限等待*/
-    private long maxWaitMillis = -1L;
+    private long maxWaitMillis = -1;
     /**redis连接超时时间
      * 参考 spring-boot-redis 默认值：设置为2000毫秒*/
-    private int timeout = 2000;
+    private int timeout = 10000;
+    /**空闲连接检查间隔时间*/
+    private Integer timeBetweenEvictionRuns = 100;
+    private Integer minEvictableIdleTimeMillis = 60000;
     /**主线程池*/
     private LQThreadPoolProperties masterPool = new LQThreadPoolProperties();
     /**辅助线程池*/

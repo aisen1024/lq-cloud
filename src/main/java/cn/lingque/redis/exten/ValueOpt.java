@@ -24,16 +24,23 @@ public class ValueOpt extends BaseOpt{
      * @param value 值
      */
     public boolean setNx(Object value) {
+        String luaScript = 
+            "local result = redis.call('SETNX', KEYS[1], ARGV[1])\n" +
+            "if result == 1 and tonumber(ARGV[2]) > 0 then\n" +
+            "    redis.call('EXPIRE', KEYS[1], ARGV[2])\n" +
+            "end\n" +
+            "return result";
+
         return (boolean)lingQueRedis.execBase((jedis) -> {
-            if (lingQueRedis.ttl == -1L) {
-                return jedis.setnx(lingQueRedis.key, LQUtil.isBaseValue(value) ? value.toString() : JSONUtil.toJsonStr(value)) > 0;
-            } else {
-                long flag = jedis.setnx(lingQueRedis.key, LQUtil.isBaseValue(value) ? value.toString() : JSONUtil.toJsonStr(value));
-                if (flag > 0) {
-                    lingQueRedis.resetTTL();
-                }
-                return flag > 0;
-            }
+            Object result = jedis.eval(
+                luaScript,
+                Collections.singletonList(lingQueRedis.key),
+                Arrays.asList(
+                    LQUtil.isBaseValue(value) ? value.toString() : JSONUtil.toJsonStr(value),
+                    String.valueOf(lingQueRedis.ttl)
+                )
+            );
+            return result != null && Long.parseLong(result.toString()) > 0;
         });
     }
 

@@ -21,4 +21,8 @@ public class JedisObj extends Jedis {
     public void returnResource(){
         TryCatch.trying(()-> pool.returnResource(conn),"回收Jedis资源");
     }
+
+    public void returnBrokenResource(){
+        TryCatch.trying(()-> pool.returnBrokenResource(conn),"回收Jedis资源");
+    }
 }

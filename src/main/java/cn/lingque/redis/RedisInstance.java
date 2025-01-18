@@ -3,6 +3,7 @@ package cn.lingque.redis;
 import cn.hutool.json.JSONUtil;
 import cn.lingque.config.LQProperties;
 import cn.lingque.util.TryCatch;
+import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
 import redis.clients.jedis.*;
@@ -28,33 +29,41 @@ public class RedisInstance {
      * @param redisPlusProperties Redis配置属性
      */
     public RedisInstance(LQProperties redisPlusProperties) {
-        // 配置连接池
-        JedisPoolConfig poolConfig = new JedisPoolConfig();
-        // 增加最大连接数
-        poolConfig.setMaxTotal(redisPlusProperties.getMaxTotal());
-        // 增加最大空闲连接数
-        poolConfig.setMaxIdle(redisPlusProperties.getMaxIdle());
-        // 设置最小空闲连接数
-        poolConfig.setMinIdle(redisPlusProperties.getMinIdle());
-        // 当池内没有可用连接时，最大等待时间
-        Duration maxWait = Duration.ofMillis(redisPlusProperties.getMaxWaitMillis());
-        poolConfig.setMaxWait(maxWait);
-        // 开启jmx监控
-        poolConfig.setJmxEnabled(true);
-        // 连接对象后进先出
-        poolConfig.setLifo(false);
-        // 在获取连接时检查有效性
-        poolConfig.setTestOnBorrow(true);
-        // 在归还连接时检查有效性
-        poolConfig.setTestOnReturn(true);
-        // 定时检查空闲连接
-        poolConfig.setTestWhileIdle(true);
-        // 空闲连接检查间隔时间
-        poolConfig.setTimeBetweenEvictionRuns(Duration.ofMillis(30000));
-        // 每次检查空闲连接的数量
-        poolConfig.setNumTestsPerEvictionRun(3);
-        // 连接最小空闲时间
-        poolConfig.setMinEvictableIdleTime(Duration.ofMillis(1800000));
+       // 配置连接池
+       JedisPoolConfig poolConfig = new JedisPoolConfig();
+       // 增加最大连接数 - 参考SpringBoot默认值
+       poolConfig.setMaxTotal(redisPlusProperties.getMaxTotal() != 0 ? redisPlusProperties.getMaxTotal() : 8);
+       // 增加最大空闲连接数 - 参考SpringBoot默认值
+       poolConfig.setMaxIdle(redisPlusProperties.getMaxIdle() != 0 ? redisPlusProperties.getMaxIdle() : 8);
+       // 设置最小空闲连接数 - 参考SpringBoot默认值
+       poolConfig.setMinIdle(redisPlusProperties.getMinIdle() != 0 ? redisPlusProperties.getMinIdle() : 0);
+       // 当池内没有可用连接时，最大等待时间
+       Duration maxWait = Duration.ofMillis(redisPlusProperties.getMaxWaitMillis() != 0 ? 
+           redisPlusProperties.getMaxWaitMillis() : -1);
+       poolConfig.setMaxWait(maxWait);
+       
+       // 开启jmx监控 - 默认关闭以减少开销
+       poolConfig.setJmxEnabled(false);
+       // 连接对象后进先出
+       poolConfig.setLifo(true);
+       // 在获取连接时检查有效性 - 默认false以提高性能
+       poolConfig.setTestOnBorrow(true);
+       // 在归还连接时检查有效性 - 默认false以提高性能
+       poolConfig.setTestOnReturn(false);
+       // 定时检查空闲连接
+       poolConfig.setTestWhileIdle(true);
+       //连接池耗尽时，获取连接是否阻塞等待
+       poolConfig.setBlockWhenExhausted(true);
+       // 空闲连接检查间隔时间 - 参考SpringBoot默认值
+       poolConfig.setTimeBetweenEvictionRuns(Duration.ofMillis(redisPlusProperties.getTimeBetweenEvictionRuns() != 0 ?
+           redisPlusProperties.getTimeBetweenEvictionRuns() : 100));
+       // 每次检查空闲连接的数量
+       poolConfig.setNumTestsPerEvictionRun(-1);  // 检查所有空闲连接
+       // 连接最小空闲时间
+       poolConfig.setMinEvictableIdleTime(Duration.ofMillis(redisPlusProperties.getMinEvictableIdleTimeMillis() != 0 ? 
+           redisPlusProperties.getMinEvictableIdleTimeMillis() : 1800000));  // 默认30分钟
+       // 设置空闲对象驱逐后最小空闲数量
+       poolConfig.setSoftMinEvictableIdleDuration(Duration.ofMillis(1800000));
 
         try {
             switch (redisPlusProperties.getMode().toLowerCase()) {
@@ -123,7 +132,7 @@ public class RedisInstance {
         GenericObjectPoolConfig<Connection> config = JSONUtil.toBean(JSONUtil.toJsonStr(poolConfig),GenericObjectPoolConfig.class);
         cluster = new JedisCluster(
                 nodes,
-                props.getTimeout(),
+                props.getTimeout() ,
                 props.getTimeout(),
                 3,  // 最大重试次数
                 props.getPassword(),
@@ -131,34 +140,54 @@ public class RedisInstance {
         );
     }
 
-    public synchronized Jedis getRedisTemplate() {
+
+    public Jedis getRedisTemplate() {
+        Jedis jedis = null;
         if ("sentinel".equalsIgnoreCase(mode)) {
             // Sentinel mode configuration
-            return sentinel.getResource();
+            jedis= sentinel.getResource();
         } else if ("cluster".equalsIgnoreCase(mode)) {
             // Cluster mode configuration
             ConnectionPool pool = cluster.getClusterNodes().values().stream().findAny().get();
-            return new JedisObj(pool,pool.getResource());
+            jedis = new JedisObj(pool,pool.getResource());
         }else {
             // Standalone mode configuration
-            return standalone.getResource();
+            jedis= standalone.getResource();
         }
+        return jedis;
     }
 
-    public synchronized void closeJedis(Jedis jedis) {
-        log.debug("回收资源---》jedis ->{}",jedis.hashCode());
+    public void returnBrokenResource(Jedis jedis) {
+        log.info("回收损坏的资源---》jedis ->{}",jedis.hashCode());
         TryCatch.trying(()->{
            switch (mode){
                case "standalone":
-                   standalone.returnResource(jedis);
+                   standalone.returnBrokenResource(jedis);
                    break;
                case "sentinel":
-                   sentinel.returnResource(jedis);
+                   sentinel.returnBrokenResource(jedis);
                    break;
                case "cluster":
-                   ((JedisObj)jedis).returnResource();
+                   ((JedisObj)jedis).returnBrokenResource();
                    break;
            }
+        },"closeJedis回收资源");
+    }
+
+    public void returnResource(Jedis jedis) {
+        log.info("回收资源---》jedis ->{}",jedis.hashCode());
+        TryCatch.trying(()->{
+            switch (mode){
+                case "standalone":
+                    standalone.returnResource(jedis);
+                    break;
+                case "sentinel":
+                    sentinel.returnResource(jedis);
+                    break;
+                case "cluster":
+                    ((JedisObj)jedis).returnResource();
+                    break;
+            }
         },"closeJedis回收资源");
     }
 
