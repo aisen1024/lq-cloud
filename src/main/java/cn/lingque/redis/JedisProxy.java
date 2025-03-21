@@ -6,8 +6,8 @@ import cn.lingque.util.TryCatch;
 import lombok.extern.slf4j.Slf4j;
 import redis.clients.jedis.Jedis;
 
+import java.math.BigDecimal;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -37,7 +37,7 @@ public class JedisProxy {
     //运行检查
     private static volatile AtomicBoolean runCheck = new AtomicBoolean(false);
 
-    //轮训
+    //轮询
     private static volatile AtomicInteger index = new AtomicInteger(0);
     /**
      * 初始化
@@ -45,9 +45,9 @@ public class JedisProxy {
      */
     public static void init(LQProperties redisPlusProperties){
         redisInstance = new RedisInstance(redisPlusProperties);
-        maxInstance = LQUtil.lt(redisPlusProperties.getMaxTotal(),0,16);
-        minInstance = LQUtil.lt(redisPlusProperties.getMaxIdle(),0,8);
-        timeout = LQUtil.lt( redisPlusProperties.getMinEvictableIdleTimeMillis(),1000,18000);
+        maxInstance = LQUtil.lt(redisPlusProperties.getMaxTotal(),0,maxInstance);
+        minInstance = LQUtil.lt(redisPlusProperties.getMaxIdle(),0,minInstance);
+        timeout = LQUtil.lt( redisPlusProperties.getMinEvictableIdleTimeMillis(),1000,timeout);
         if (runCheck.compareAndSet(false,true)){
             startCheck();
         }
@@ -82,8 +82,15 @@ public class JedisProxy {
      * 根据使用量进行判断
      */
     private static void autoLoadSource(){
-        //某一时刻当它飙升到2倍时，改成最大加载
-        int size = useMap.values().stream().mapToInt(AtomicInteger::get).sum() > useMap.size() * 2 ? maxInstance: minInstance;
+        //当前使用
+        int sum =  useMap.values().stream().mapToInt(AtomicInteger::get).sum();
+        //实例个数
+        int count = useMap.size();
+        //某一时刻当它飙升到2.5倍时后，按照倍数增长
+        int size = sum > count * 2.5 ? minInstance * (BigDecimal.valueOf(sum).divide(BigDecimal.valueOf(count),0,BigDecimal.ROUND_UP).intValue()) : minInstance;
+        if (size > maxInstance){
+            size = maxInstance;
+        }
         loadSource(size);
     }
     /**

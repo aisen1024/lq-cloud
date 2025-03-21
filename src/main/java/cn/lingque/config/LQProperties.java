@@ -1,5 +1,7 @@
 package cn.lingque.config;
 
+import cn.lingque.cloud.config.LQConfigCenterProperties;
+import cn.lingque.cloud.node.ServerConfig;
 import cn.lingque.console.config.LqConsoleConfig;
 import lombok.Data;
 import lombok.experimental.Accessors;
@@ -51,13 +53,6 @@ public class LQProperties {
     private LQThreadPoolProperties masterPool = new LQThreadPoolProperties();
     /**辅助线程池*/
     private LQThreadPoolProperties slavePool = new LQThreadPoolProperties();
-    //-------------------------------------分布式配置-------------------------------------------//
-    /**全局的微服务名称*/
-    private String serverName = null;
-    /**全局微服务注册IP*/
-    private String serverHost = null;
-    /**全局微服务注册端口*/
-    private Integer serverPort = null;
 
     //-------------------------------------模式配置-------------------------------------------//
     /**模式：standalone单机 cluster集群 sentinel哨兵，默认单机*/
@@ -70,11 +65,13 @@ public class LQProperties {
     /**消息总线*/
     private RedisPlusBusProperties bus = new RedisPlusBusProperties();
     //-------------------------------------配置中心-------------------------------------------//
-    /**配置中心*/
-    private LqConfigCenterProperties configCenter = new LqConfigCenterProperties();
 
     /**控制台*/
     private LqConsoleConfig console = new LqConsoleConfig();
+    /**服务节点信息*/
+    private ServerConfig server = new ServerConfig();
+    /**配置中心*/
+    private LQConfigCenterProperties config = new LQConfigCenterProperties();
 
 
     /**哨兵*/

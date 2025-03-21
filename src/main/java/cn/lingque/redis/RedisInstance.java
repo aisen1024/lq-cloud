@@ -158,7 +158,7 @@ public class RedisInstance {
     }
 
     public void returnBrokenResource(Jedis jedis) {
-        log.info("回收损坏的资源---》jedis ->{}",jedis.hashCode());
+        log.debug("回收损坏的资源---》jedis ->{}",jedis.hashCode());
         TryCatch.trying(()->{
            switch (mode){
                case "standalone":
@@ -175,7 +175,7 @@ public class RedisInstance {
     }
 
     public void returnResource(Jedis jedis) {
-        log.info("回收资源---》jedis ->{}",jedis.hashCode());
+        log.debug("回收资源---》jedis ->{}",jedis.hashCode());
         TryCatch.trying(()->{
             switch (mode){
                 case "standalone":

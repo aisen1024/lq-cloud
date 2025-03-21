@@ -6,11 +6,11 @@ import cn.lingque.cloud.node.bean.LQNodeInfo;
 import cn.lingque.redis.LingQueRedis;
 import cn.lingque.redis.bean.RedisRank;
 import cn.lingque.util.LQUtil;
+import cn.lingque.util.TryCatch;
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
@@ -21,16 +21,6 @@ public class LQRegisterCenter {
     private final static LQKey nodeService = LQKey.key("LQ:CLOUD:NODE:REG:CENTER", 1D, 5L);
     //服务列表汇总
     private final static LQKey svGroupService = LQKey.key("LQ:CLOUD:NODE:REG:CENTER:GROUP", 1D, LQKey.FOREVER);
-
-    /***
-     * 节点线程
-     */
-    private static Thread clearThread;
-
-    /***
-     * 心跳线程
-     */
-    private static Thread heartThread;
 
     /**
      * 本项目注册的节点
@@ -94,55 +84,41 @@ public class LQRegisterCenter {
      */
     public static void start() {
         if (isInitRegister.compareAndSet(0, 1)) {
-            //更新节点到对应的服务，维持心跳3秒一次
-            heartThread = new Thread(() -> {
-                while (true) {
-                    for (LQNodeInfo node : currentNodes) {
-                        try {
-                            nodeService.rd(node.getServerName()).ofZSet().setScore(JSONUtil.toJsonStr(node), System.currentTimeMillis() * 1D);
-                            svGroupService.rd().ofZSet().setScore(node.getServerName(),System.currentTimeMillis() * 1D);
-                        } catch (Exception e) {
-                            log.error("注册节点并发布心跳异常 | {} ", JSONUtil.toJsonStr(node),e);
+           LQUtil.execLoadJob("注册中心定时服务",()->{
+                    TryCatch.trying(()->{
+                        //更新节点到对应的服务，维持心跳3秒一次
+                        for (LQNodeInfo node : currentNodes) {
+                            try {
+                                nodeService.rd(node.getServerName()).ofZSet().setScore(JSONUtil.toJsonStr(node), System.currentTimeMillis() * 1D);
+                                svGroupService.rd().ofZSet().setScore(node.getServerName(),System.currentTimeMillis() * 1D);
+                            } catch (Exception e) {
+                                log.error("注册节点并发布心跳异常 | {} ", JSONUtil.toJsonStr(node),e);
+                            }
                         }
-                    }
-                    try {
-                        Thread.sleep(3000L);
-                    } catch (Exception e) {
-                        log.error("tryInitRegisterCenter 睡眠失败！", e);
-                    }
-                }
-            });
-            heartThread.start();
+                    });
 
-            //清空5秒没有上报的节点
-            clearThread = new Thread(() -> {
-                while (true) {
-                    List<String> svList = svGroupService.rd().ofZSet().getMembers(1,System.currentTimeMillis());
-                    for (String sv : svList) {
-                        try {
-                            LingQueRedis svHandle = nodeService.rd(sv);
-                            List<String> timeoutSvList = svHandle.ofZSet().getMembers(1, System.currentTimeMillis() - 5000);
-                            if (timeoutSvList != null && timeoutSvList.size() > 0) {
-                                String[] keys = new String[timeoutSvList.size()];
-                                keys = timeoutSvList.toArray(keys);
-                                svHandle.ofZSet().delete(keys);
+                    TryCatch.trying(()-> {
+                        List<String> svList = svGroupService.rd().ofZSet().getMembers(1, System.currentTimeMillis());
+                        for (String sv : svList) {
+                            try {
+                                LingQueRedis svHandle = nodeService.rd(sv);
+                                List<String> timeoutSvList = svHandle.ofZSet().getMembers(1, System.currentTimeMillis() - 5000);
+                                if (timeoutSvList != null && timeoutSvList.size() > 0) {
+                                    String[] keys = new String[timeoutSvList.size()];
+                                    keys = timeoutSvList.toArray(keys);
+                                    svHandle.ofZSet().delete(keys);
+                                }
+                                //如果当前服务组节点都没有了，直接下架服务
+                                if (svHandle.ofZSet().size() <= 0) {
+                                    svGroupService.rd().ofZSet().delete(sv);
+                                }
+                            } catch (Exception e) {
+                                log.error("注册节点并发布心跳异常 | {} ", sv);
                             }
-                            //如果当前服务组节点都没有了，直接下架服务
-                            if (svHandle.ofZSet().size() <= 0){
-                                svGroupService.rd().ofZSet().delete(sv);
-                            }
-                        } catch (Exception e) {
-                            log.error("注册节点并发布心跳异常 | {} ", sv);
                         }
-                    }
-                    try {
-                        Thread.sleep(2000L);
-                    } catch (Exception e) {
-                        log.error("tryInitRegisterCenter 睡眠失败！", e);
-                    }
-                }
-            });
-           clearThread.start();
+                    });
+            }, 0, 3000,TimeUnit.MILLISECONDS);//2000表示第一次执行任务延迟时间，3000表示以后每隔多长时间执行一次run里面的任务
+
         }
     }
 

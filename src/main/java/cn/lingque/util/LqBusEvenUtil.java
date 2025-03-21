@@ -2,6 +2,9 @@ package cn.lingque.util;
 
 import cn.lingque.bus.LQBus;
 
+/**
+ * 消息bus事件工具类
+ */
 public class LqBusEvenUtil {
 
 

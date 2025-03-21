@@ -83,9 +83,6 @@ public class LqMQListenerConfiguration implements BeanPostProcessor, Application
             case UNIQUE:
                 LQMQConsumer.register(key, redis.ofUniqueQueue(), messageHandler);
                 break;
-            case TIMING_WHEEL:
-                LQMQConsumer.register(key, redis.ofTimingWheelQueue(), messageHandler);
-                break;
         }
 
         log.info("Registered MQ listener for key: {}, type: {}, method: {}", 

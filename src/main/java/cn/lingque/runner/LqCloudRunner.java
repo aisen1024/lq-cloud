@@ -2,7 +2,6 @@ package cn.lingque.runner;
 
 import cn.hutool.crypto.digest.MD5;
 import cn.hutool.json.JSONUtil;
-import cn.lingque.base.LQKey;
 import cn.lingque.bus.LQBus;
 import cn.lingque.cloud.node.LQRegisterCenter;
 import cn.lingque.cloud.node.bean.LQNodeInfo;
@@ -36,33 +35,30 @@ public class LqCloudRunner {
         //启动消息总线
         if (lqProperties.getBus().getEnable()){
             //集群消息总线
-            LQBus.startBus(lqProperties.getServerName());
+            LQBus.startBus(lqProperties.getServer().getServerName());
             //精准消息总线
-            LQBus.startBus(lqProperties.getServerName()+":"+ MD5.create().digestHex16(JSONUtil.toJsonStr(node)));
+            LQBus.startBus(lqProperties.getServer().getServerName()+":"+ MD5.create().digestHex16(JSONUtil.toJsonStr(node)));
         }
 
         //启动MQ
         LQMQConsumer.start();
-
-        log.info("<<<<<<<<<灵雀云组件启动成功>>>>>>>>");
-
-    }
+        log.info("<<<<<<<<<灵雀云组件启动成功>>>>>>>>");}
 
     /**
      * 检查配置
      * @param lqProperties
      */
     private void checkConfig(LQProperties lqProperties){
-        if (LQUtil.isEmpty(lqProperties.getServerName())){
+        if (LQUtil.isEmpty(lqProperties.getServer().getServerName())){
             String applicationName = LqSpringUtil.getApplicationName();
-            lqProperties.setServerName(LQUtil.isEmpty(applicationName) ?  "lq_server" : applicationName);
+            lqProperties.getServer().setServerName(LQUtil.isEmpty(applicationName) ?  "lq_server" : applicationName);
         }
-        if (LQUtil.isEmpty(lqProperties.getServerHost())){
-            lqProperties.setServerHost(IpUtil.getLocalIp());
+        if (LQUtil.isEmpty(lqProperties.getServer().getServerHost())){
+            lqProperties.getServer().setServerHost(IpUtil.getLocalIp());
         }
-        if (lqProperties.getServerPort() == null){
+        if (lqProperties.getServer().getServerPort() == null){
             String port = LqSpringUtil.getProperty("server.port");
-            lqProperties.setServerPort(Integer.parseInt(LQUtil.defaultString(port,"8080")));
+            lqProperties.getServer().setServerPort(Integer.parseInt(LQUtil.defaultString(port,"8080")));
         }
     }
 
@@ -84,23 +80,12 @@ public class LqCloudRunner {
      */
     private LQNodeInfo startRegisterCenter(LQProperties lqProperties){
         LQNodeInfo node = new LQNodeInfo();
-        node.setNodeIp(lqProperties.getServerHost());
-        node.setNodePort(lqProperties.getServerPort());
-        node.setServerName(lqProperties.getServerName());
+        node.setNodeIp(lqProperties.getServer().getServerHost());
+        node.setNodePort(lqProperties.getServer().getServerPort());
+        node.setServerName(lqProperties.getServer().getServerName());
         LQRegisterCenter.registerNode(node);
         //启动注册服务中心
         LQRegisterCenter.start();
         return node;
     }
-
-//    public static void main(String[] args) {
-//        LQProperties lqProperties = new LQProperties();
-//        lqProperties.setServerHost("127.0.0.1");
-//        lqProperties.setServerPort(9999);
-//        lqProperties.setServerName("lq_ss");
-//        lqProperties.setDb(1);
-//        LqCloudRunner lqCloudRunner = new LqCloudRunner(lqProperties);
-//        LQKey ks = LQKey.key("lll",1D,10L);
-//        ks.rd().ofZSet().delete("123");
-//    }
 }

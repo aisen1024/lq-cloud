@@ -3,6 +3,7 @@ package cn.lingque.redis.exten;
 import cn.lingque.redis.LingQueRedis;
 import cn.lingque.redis.bean.RedisRank;
 import cn.lingque.util.LQUtil;
+import cn.lingque.util.TryCatch;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
@@ -162,7 +163,7 @@ public class SortedSetOpt extends BaseOpt{
                             Long.toString(lingQueRedis.ttl)
                     )
             );
-            return (long) result;
+            return TryCatch.tryResult(()->(long) result,-1L);
         });
         
     }
@@ -252,7 +253,7 @@ public class SortedSetOpt extends BaseOpt{
                     getKey(),
                     args
             );
-            return (Long) result > 0;
+            return TryCatch.tryResult(()->(long) result,-1L) > 0;
         });
     }
 

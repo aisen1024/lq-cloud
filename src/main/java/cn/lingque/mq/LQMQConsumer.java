@@ -53,8 +53,7 @@ public class LQMQConsumer {
     public static void start() {
         STATE.compareAndSet(false, true);
         if (IS_RUN.compareAndSet(false, true)) {
-            new Thread(() -> {
-                while (true) {
+            LQUtil.execLoadJob("消息消费任务",()->{
                     if (registerConsumerMap.size() > 0 && STATE.get()) {
                         for (String key : registerConsumerMap.keySet()) {
                             IMQConsumer consumer = registerConsumerMap.get(key);
@@ -66,9 +65,7 @@ public class LQMQConsumer {
                             });
                         }
                     }
-                    TryCatch.trying(() -> {Thread.sleep(200L);});
-                }
-            }).start();
+            },1000,50,TimeUnit.MILLISECONDS);
         }
     }
 

@@ -57,9 +57,6 @@ public class LingQueRedis extends BaseOpt{
     public LQSequenceQueue ofSequenceQueue(){
         return new LQSequenceQueue(this);
     }
-    public LQTimingWheelQueue ofTimingWheelQueue(){
-        return new LQTimingWheelQueue(this);
-    }
     public LQUniqueQueue ofUniqueQueue(){
         return new LQUniqueQueue(this);
     }
@@ -147,7 +144,6 @@ public class LingQueRedis extends BaseOpt{
             return exec.exec(jedis);
         }catch (JedisConnectionException j){
             JedisProxy.returnJedis(jedis,0);
-            jedis = null;
             throw new RuntimeException(j);
         } finally {
             if (jedis != null) {

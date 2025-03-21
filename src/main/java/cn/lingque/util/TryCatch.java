@@ -105,7 +105,7 @@ public class TryCatch<R> {
         try {
             return exec.trying();
         } catch (Exception e) {
-            log.error("TryCatch 异常 ", e);
+            log.debug("TryCatch 异常 ", e);
         } finally {
             log.debug(" [结束] : {}ms  ", System.currentTimeMillis() - start);
         }
