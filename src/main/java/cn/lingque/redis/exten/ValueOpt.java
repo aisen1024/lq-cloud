@@ -59,7 +59,7 @@ public class ValueOpt extends BaseOpt{
      * @param value 值
      */
     public void set(Object value,long ttl) {
-        lingQueRedis.execBase((jedis) -> {
+        lingQueRedis.execBaseWithRetry((jedis) -> {
             if (ttl == -1L) {
                 jedis.set(lingQueRedis.key, LQUtil.isBaseValue(value) ? value.toString() : JSONUtil.toJsonStr(value));
             } else {
@@ -228,7 +228,7 @@ public class ValueOpt extends BaseOpt{
      * @return 缓存值
      */
     public <T> T getValue(Class<T> targetClass) {
-        return (T)lingQueRedis.execBase((jedis) -> {
+        return (T)lingQueRedis.execBaseWithRetry((jedis) -> {
             String obj = jedis.get(lingQueRedis.key);
             if (lingQueRedis.isNullCache(obj)) {
                 return null;

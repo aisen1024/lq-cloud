@@ -1,356 +1,437 @@
-# LQ_Cloud - 灵雀分布式框架
+# 灵雀分布式框架 (LQ_Cloud) 使用文档
 
-## 介绍
-灵雀生态是一个基于Redis的轻量级分布式开发框架，旨在为中小企业提供低成本、高性能的微服务架构解决方案。
+## 目录
+1. 简介
+2. 快速开始
+   - 环境要求
+   - Maven依赖
+   - 基本配置
+3. 基础功能
+   - Redis轻量级操作
+   - 分布式锁
+4. 消息队列
+   - 延迟消息队列
+   - 顺序消息队列
+   - 去重消息队列
+5. 消息总线
+   - 消息总线配置
+   - 消息发送与接收
+6. 服务注册与发现
+   - 服务注册
+   - 基于Forest的服务调用
+7. 常见问题
 
-## 主要特性
-- Redis轻量级操作封装
-- 分布式锁
-- 微服务注册与发现
-- 消息总线
-- 多种消息队列实现
-  - 延迟消息队列
-  - 顺序消息队列
-  - 去重消息队列
-- 支持Dubbo RPC和SpringCloud生态
+## 1. 简介
 
-## 快速开始
+灵雀分布式框架（LQ_Cloud）是一个基于Redis的轻量级分布式开发框架，旨在为中小企业提供低成本、高性能的微服务架构解决方案。框架整合了分布式锁、微服务注册与发现、消息总线、多种消息队列实现，并支持Dubbo RPC和SpringCloud生态。
 
-### 1. Maven依赖
+## 2. 快速开始
+
+### 环境要求
+- JDK 17+
+- Redis 6.0+
+- Spring Boot 3.2.4+
+
+### Maven依赖
+
+在项目的pom.xml中添加以下依赖：
+
 ```xml
 <dependency>
-    <groupId>com.lingque</groupId>
+    <groupId>io.github.aisen1024</groupId>
     <artifactId>lq-cloud</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.5</version>
 </dependency>
 ```
 
+### 基本配置
 
-### 2. 配置文件
+在Spring Boot配置文件(`application.yml`或`application.properties`)中添加灵雀框架配置：
+
 ```yaml
 ling-que:
   # Redis基础配置
-  ip: localhost #redis的IP
-  port: 6379 #redis端口
-  password: 密码 # 密码
-  db: 0 #数据库选择 0～16
-   
+  ip: 127.0.0.1             # Redis服务器地址，默认localhost
+  port: 6379                # Redis端口，默认6379
+  password: your_password   # Redis密码，默认为空
+  db: 0                     # 使用的数据库，默认为0
+  username: default         # 连接用户名，默认default
+  
   # 连接池配置
-  maxTotal: 10 
-  maxIdle: 10 
-  minIdle: 0
-  maxWaitMillis: 60000
-  timeout: 18000
+  max-total: 50             # 最大连接数，默认50
+  max-idle: 20              # 最大空闲连接数，默认20
+  min-idle: 10              # 最小空闲连接数，默认10
+  max-wait-millis: -1       # 最大等待时间(毫秒)，-1表示无限等待
+  timeout: 10000            # 连接超时时间(毫秒)，默认10000
+  
   # Redis模式配置
-  mode: standalone  # standalone/sentinel/cluster
+  mode: standalone          # 模式: standalone(单机)、cluster(集群)、sentinel(哨兵)，默认单机
   
   # 哨兵模式配置
   sentinel:
-    master: mymaster
-    sentinelNodes:
-      - 192.168.1.10:26379
-      - 192.168.1.11:26379
+    master: mymaster        # 哨兵主节点名称
+    sentinel-nodes:         # 哨兵节点地址列表
+      - 127.0.0.1:26379
+      - 127.0.0.1:26380
   
   # 集群模式配置
   cluster:
-    clusterNodes:
-      - 192.168.1.10:6379
-      - 192.168.1.11:6379
+    user: default           # 集群用户
+    cluster-nodes:          # 集群节点地址列表
+      - 127.0.0.1:6379
+      - 127.0.0.1:6380
   
-  # 微服务配置
-  serverName: my-service
-  serverHost: 192.168.1.100
-  serverPort: 8080
+  # 线程池配置
+  master-pool:              # 主线程池配置
+    core-pool-size: 10      # 核心线程数，默认10
+    maximum-pool-size: 50   # 最大线程数，默认50
+    keep-alive-time: 18000  # 闲置线程存活时间(毫秒)，默认18000
+  
+  slave-pool:               # 辅助线程池配置
+    core-pool-size: 10      # 核心线程数，默认10
+    maximum-pool-size: 50   # 最大线程数，默认50
+    keep-alive-time: 18000  # 闲置线程存活时间(毫秒)，默认18000
   
   # 消息总线配置
   bus:
-    # 默认是spring.application.name，如果缺省则默认值：ling-server
-    serverName: ling-server
-    # 是否开启消息总线
-    enable: true
-
-
-  # 主线程池配置 用于底层交互
-  masterPool:
-    corePoolSize: 10  # 核心线程数
-    maximumPoolSize: 20   # 最大线程数
-    keepAliveTime: 18000  # 线程空闲时间(毫秒)
-    
-  # 从线程池配置 用于业务处理
-  slavePool:
-    corePoolSize: 10  # 核心线程数
-    maximumPoolSize: 20   # 最大线程数
-    keepAliveTime: 18000  # 线程空闲时间(毫秒)
+    server-name: ling-server # 服务名称，默认ling-server
+    enable: true            # 是否启用消息总线，默认true
   
-
+  # 服务节点配置
+  node:
+    server-name: user-service  # 服务名称
+    server-host: 192.168.1.100 # 服务IP
+    server-port: 8080          # 服务端口
 ```
-### @LQStarterEnable 启动云组件
-```java
 
-@LQStarterEnable
-@SpringBootApplication
-public class DemoApplication {
-    public static void main(String[] args) {
-        SpringApplication.run(DemoApplication.class, args);
+## 3. 基础功能
+
+### Redis轻量级操作
+
+灵雀框架对Redis操作进行了轻量级封装，使用更加简便。
+
+#### 核心API - LingQueRedis
+
+```java
+// 创建Redis操作对象，基于Key
+LingQueRedis redis = LingQueRedis.ofKey("your_key", 300L); // 300秒过期
+
+// 基于预定义Key构建
+LQKey key = LQKey.key("USER:INFO", 1D, LQKey.ONE_HOUR);
+LingQueRedis redis = LingQueRedis.ofKey(key, "userId123");
+
+// 字符串操作
+redis.ofValue().set("value");
+String value = redis.ofValue().get();
+
+// 列表操作
+redis.ofList().rightPush("value1");
+redis.ofList().leftPush("value2");
+List<String> values = redis.ofList().range(0, -1);
+
+// Hash操作
+redis.ofHash().put("field1", "value1");
+String fieldValue = redis.ofHash().get("field1");
+
+// Set操作
+redis.ofSet().add("value1", "value2");
+Set<String> members = redis.ofSet().members();
+
+// ZSet操作
+redis.ofZSet().add("member1", 1.0);
+redis.ofZSet().add("member2", 2.0);
+List<String> zsetMembers = redis.ofZSet().rangeByScore(1.0, 2.0);
+```
+
+### 分布式锁
+
+灵雀框架提供了简单易用的分布式锁实现：
+
+```java
+// 创建锁
+LQKey lockKey = LQKey.key("LOCK:ORDER", 1D, 30L); // 30秒过期
+LingQueRedis lock = LingQueRedis.ofKey(lockKey, "order123");
+
+// 简单锁操作
+boolean acquired = lock.ofLock().lock(false);
+if (acquired) {
+    try {
+        // 执行业务逻辑
+    } finally {
+        lock.ofLock().unlock();
     }
 }
 
-```
-
-### 3. 缓存Key管理
-LQKey提供了统一的缓存key管理机制，包含三个要素：
-- 前缀(prefixKey)
-- 版本号(version)
-- 过期时间(ttl)
-```text
-🚩说明: 万物皆以LQKey开启，LQKey是灵雀最核心的灵魂，所有的组件核心实现都基于它，比如分布式锁、基本操作、消息队列等等
-
-```
-#### 常用过期时间常量
-- LQKey.TEN_SECONDS // 10秒
-- LQKey.ONE_MINUTE // 1分钟
-- LQKey.FIVE_MINUTE // 5分钟
-- LQKey.HALF_HOUR // 30分钟
-- LQKey.ONE_HOUR // 1小时
-- LQKey.HALF_DAY // 12小时
-- LQKey.ONE_DAY // 24小时
-- LQKey.ONE_WEEK // 1周
-- LQKey.ONE_MONTH // 1月
-- LQKey.FOREVER // 永久
-
-#### 简单使用示例
-### 3.1 定义并使用LQKey
-
-```java
-//定义key
-LQKey key = LQKey.key("user:token", 1D, LQKey.ONE_MINUTE);
-// key.rp(...参数) 简单使用使用key;
-key.rp(172918L).ofValue().set("token123");
-```
-
-
-
-### 3.1 Value操作(ofValue)
-
-Value 类型是最基础的 key-value 结构，支持存储字符串和数值类型。
-
-#### 基础操作
-```java
-// 定义key
-LQKey key = LQKey.key("user:token", 1D, LQKey.ONE_MINUTE);
-
-// 设置值
-key.rd("123").ofValue().set("token123");
-
-// 获取值
-String value = key.rd("123").ofValue().get();
-
-// 删除值
-key.rd("123").ofValue().delete();
-
-// 判断是否存在
-boolean exists = key.rd("123").ofValue().exists();
-```
-
-#### 过期时间操作
-```java
-// 设置值同时指定过期时间
-key.rd("123").ofValue().set("token123", LQKey.ONE_HOUR);
-
-// 设置过期时间
-key.rd("123").ofValue().expire(LQKey.ONE_HOUR);
-
-// 获取剩余过期时间(秒)
-Long ttl = key.rd("123").ofValue().ttl();
-```
-
-#### 数值操作
-```java
-// 递增
-key.rd("counter").ofValue().incr();  // +1
-key.rd("counter").ofValue().incrBy(5);  // +5
-key.rd("counter").ofValue().incrByFloat(1.5);  // +1.5
-
-// 递减
-key.rd("counter").ofValue().decr();  // -1
-key.rd("counter").ofValue().decrBy(3);  // -3
-```
-
-#### 批量操作
-```java
-// 批量设置值
-Map<String, String> map = new HashMap<>();
-map.put("key1", "value1");
-map.put("key2", "value2");
-key.rd().ofValue().mset(map);
-
-// 批量获取值
-List<String> keys = Arrays.asList("key1", "key2");
-List<String> values = key.rd().ofValue().mget(keys);
-```
-
-#### 原子操作
-```java
-// 设置值并返回旧值
-String oldValue = key.rd("123").ofValue().getSet("newValue");
-
-// 设置值(仅当key不存在时)
-boolean success = key.rd("123").ofValue().setNx("value");
-
-// 设置值(仅当key存在时)
-boolean success = key.rd("123").ofValue().setXx("value");
-```
-
-#### 高级特性
-```java
-// 追加字符串
-key.rd("msg").ofValue().append("Hello");
-key.rd("msg").ofValue().append(" World");  // 结果: "Hello World"
-
-// 获取字符串长度
-long length = key.rd("msg").ofValue().strlen();
-
-// 获取指定范围的字符串
-String substring = key.rd("msg").ofValue().getRange(0, 4);  // 结果: "Hello"
-
-// 设置新值并返回旧值
-String oldValue = key.rd("123").ofValue().getSet("newValue");
-```
-
-#### 使用场景示例
-
-1. 缓存用户Token
-```java
-// 定义Token缓存key
-LQKey tokenKey = LQKey.key("user:token", 1D, LQKey.ONE_HOUR);
-
-// 保存Token
-public void saveUserToken(Long userId, String token) {
-    tokenKey.rd(userId).ofValue().set(token);
-}
-
-// 获取Token
-public String getUserToken(Long userId) {
-    return tokenKey.rd(userId).ofValue().get();
-}
-
-// 刷新Token过期时间
-public void refreshToken(Long userId) {
-    tokenKey.rd(userId).ofValue().expire(LQKey.ONE_HOUR);
-}
-```
-
-2. 计数器应用
-```java
-// 定义计数器key
-LQKey counterKey = LQKey.key("daily:visits", 1D, LQKey.ONE_DAY);
-
-// 访问计数
-public long incrementVisits() {
-    return counterKey.rd().ofValue().incr();
-}
-
-// 获取当日访问次数
-public long getTodayVisits() {
-    String count = counterKey.rd().ofValue().get();
-    return count != null ? Long.parseLong(count) : 0;
-}
-```
-
-3. 分布式限流
-```java
-// 定义限流key
-LQKey limitKey = LQKey.key("rate:limit", 1D, LQKey.ONE_MINUTE);
-
-// 简单限流实现
-public boolean isAllowed(String userId) {
-    String key = limitKey.rd(userId).buildKey();
-    long count = limitKey.rd(userId).ofValue().incrBy(1);
-    if (count == 1) {
-        // 设置过期时间
-        limitKey.rd(userId).ofValue().expire(LQKey.ONE_MINUTE);
+// 尝试获取锁（带等待时间）
+boolean acquired = lock.ofLock().tryLock(5L); // 等待5秒
+if (acquired) {
+    try {
+        // 执行业务逻辑
+    } finally {
+        lock.ofLock().unlock();
     }
-    return count <= 100; // 每分钟限制100次
 }
+
+// 使用Lambda简化锁操作
+String result = lock.ofLock().lockFuture(() -> {
+    // 获取锁成功后执行的代码
+    return "success";
+}, () -> {
+    // 获取锁失败后执行的代码
+    return "fail";
+});
+
+// 锁执行完延迟释放
+String result = lock.ofLock().lockFutureAndLazy(() -> {
+    // 业务逻辑
+    return "success";
+}, 10L); // 10秒后释放锁
 ```
 
-4. 配置缓存
+## 4. 消息队列
+
+灵雀框架提供了三种消息队列实现，可以通过`@LqMQListener`注解轻松实现消息的消费：
+
+### 延迟消息队列 (LQLazyQueue)
+
+适用于需要延迟处理的场景，如延迟发送消息、定时任务等。
+
 ```java
-// 定义配置key
-LQKey configKey = LQKey.key("sys:config", 1D, LQKey.ONE_DAY);
+// 创建延迟队列
+LQLazyQueue lazyQueue = LingQueRedis.ofKey("LAZY_QUEUE", LQKey.ONE_DAY).ofLazyQueue();
 
-// 批量更新配置
-public void updateConfigs(Map<String, String> configs) {
-    configKey.rd().ofValue().mset(configs);
-}
+// 生产消息（10秒后处理）
+lazyQueue.push("消息内容", 10L);
 
-// 获取配置
-public String getConfig(String configName) {
-    return configKey.rd(configName).ofValue().get();
+// 手动消费消息
+List<String> messages = lazyQueue.pop(10); // 一次最多取10条
+
+// 使用注解方式注册消费者
+@Component
+public class LazyQueueConsumer {
+    
+    @LqMQListener(key = "LAZY_QUEUE", type = LqMqType.LAZY)
+    public void consumeLazyMessage(String message) {
+        System.out.println("处理延迟消息: " + message);
+        // 处理业务逻辑
+    }
 }
 ```
 
-#### 注意事项
-1. 合理设置过期时间，避免长期占用内存
-2. 对于高频访问的key，考虑使用本地缓存
-3. 大量key批量操作时使用mget/mset
-4. 注意处理并发情况下的原子性要求
-5. 关键操作需要做好异常处理
+### 顺序消息队列 (LQSequenceQueue)
 
-### 4. 消息队列使用
-支持多种消息队列类型，使用注解方式简单配置：
+保证消息按照发送顺序被消费，适用于需要顺序处理的场景。
+
+```java
+// 创建顺序队列
+LQSequenceQueue sequenceQueue = LingQueRedis.ofKey("SEQ_QUEUE", LQKey.ONE_DAY).ofSequenceQueue();
+
+// 生产消息
+sequenceQueue.push("消息1");
+sequenceQueue.push("消息2");
+
+// 手动消费消息
+List<String> messages = sequenceQueue.pop(10);
+
+// 使用注解方式注册消费者
+@Component
+public class SequenceQueueConsumer {
+    
+    @LqMQListener(key = "SEQ_QUEUE", type = LqMqType.SEQUENCE)
+    public void consumeSequenceMessage(String message) {
+        System.out.println("处理顺序消息: " + message);
+        // 处理业务逻辑
+    }
+}
+```
+
+### 去重消息队列 (LQUniqueQueue)
+
+确保相同内容的消息只会被处理一次，适用于防止重复处理的场景。
+
+```java
+// 创建去重队列
+LQUniqueQueue uniqueQueue = LingQueRedis.ofKey("UNIQUE_QUEUE", LQKey.ONE_DAY).ofUniqueQueue();
+
+// 生产消息
+uniqueQueue.push("唯一消息");
+uniqueQueue.push("唯一消息"); // 重复消息会被忽略
+
+// 手动消费消息
+List<String> messages = uniqueQueue.pop(10);
+
+// 使用注解方式注册消费者
+@Component
+public class UniqueQueueConsumer {
+    
+    @LqMQListener(key = "UNIQUE_QUEUE", type = LqMqType.UNIQUE)
+    public void consumeUniqueMessage(String message) {
+        System.out.println("处理去重消息: " + message);
+        // 处理业务逻辑
+    }
+}
+```
+
+## 5. 消息总线 (LQBus)
+
+灵雀框架提供了基于Redis的分布式消息总线，可以通过`@LqEvenBus`注解轻松实现消息的订阅。
+
+### 启动消息总线
+
+```java
+// 启动消息总线，参数为服务名
+LQBus.startBus("order-service");
+```
+
+### 消息发送
+
+```java
+// 发送消息到同一服务的所有节点
+LQBus.sendBus("order-service", "order-created", "订单ID:12345", true);
+
+// 发送消息到所有在线的服务节点
+LQBus.sendBusAll("global-notification", "系统将在10分钟后维护", true);
+```
+
+### 消息订阅
+
+```java
+// 使用注解方式订阅消息
+@Component
+public class OrderEventHandler {
+    
+    @LqEvenBus(even = "order-created")
+    public void handleOrderCreated(String message) {
+        System.out.println("收到订单创建消息: " + message);
+        // 处理业务逻辑
+    }
+    
+    @LqEvenBus(even = "global-notification")
+    public void handleGlobalNotification(String message) {
+        System.out.println("收到全局通知: " + message);
+        // 处理业务逻辑
+    }
+}
+```
+
+## 6. 服务注册与发现
+
+灵雀框架提供了基于Redis的服务注册中心，结合Forest HTTP客户端实现服务的注册、发现和调用功能，支持分布式环境下的服务间通信和负载均衡。
+
+### 服务注册
+
+灵雀框架会根据配置文件中的`ling-que.server`配置自动注册服务到注册中心，无需手动编写注册代码。配置示例：
+
+```yaml
+ling-que:
+  # 服务节点配置
+  server:
+    server-name: user-service  # 服务名称，不配置则取spring.application.name的值；若spring.application.name也为空，则默认为lq_server
+    server-host: 192.168.1.100 # 服务IP，不配置则自动获取本机IP
+    server-port: 8080          # 服务端口，不配置则使用server.port
+```
+
+服务启动时，灵雀框架会自动将服务信息注册到Redis，并维持心跳。如果需要查看注册中心的服务列表，可以使用：
+
+```java
+// 获取指定服务的所有节点
+Set<LQNodeInfo> nodes = LQRegisterCenter.getSvNodeList("user-service");
+
+// 获取所有在线服务节点
+Set<LQNodeInfo> allNodes = LQRegisterCenter.getAllNodeList();
+
+// 判断是否当前节点
+boolean isCurrentNode = LQRegisterCenter.isCurrentNode(nodeInfo);
+```
+
+### 基于Forest的服务调用
+
+灵雀框架使用`@LqService`注解结合Forest HTTP客户端实现服务发现和负载均衡调用：
+
+#### 1. 配置Forest客户端
+
+```java
+@Configuration
+@ForestScan(basePackages = "com.example.client")
+public class ForestConfig {
+}
+```
+
+#### 2. 定义服务接口
+
+使用`@LqService`注解标记服务接口，实现服务发现和自动路由：
+
+```java
+// 使用@LqService注解定义服务接口，实现服务发现和负载均衡
+@LqService(serviceName = "user-service")
+public interface UserService {
+    
+    @Get("/users/{id}")
+    UserResponse getUser(@Var("id") Long id);
+    
+    @Post("/users")
+    UserResponse createUser(@JSONBody UserRequest request);
+}
+```
+
+#### 3. 调用服务
 
 ```java
 @Service
-public class MessageHandler {
+public class UserServiceClient {
     
-    @LqMQListener(key = "order.create", type = LqMqType.SEQUENCE)
-    public void handleOrderCreate(OrderDTO order) {
-        // 处理订单创建消息
+    @Resource
+    private UserService userService;
+    
+    public UserResponse getUser(Long id) {
+        // 自动路由到user-service服务，实现负载均衡
+        return userService.getUser(id);
     }
     
-    @LqMQListener(key = "user.login", type = LqMqType.UNIQUE)
-    public void handleUserLogin(UserLoginEvent event) {
-        // 处理用户登录消息
-    }
-    
-    @LqMQListener(key = "task.delay", type = LqMqType.TIMING_WHEEL)
-    public void handleDelayTask(TaskDTO task) {
-        // 处理延迟任务
+    public UserResponse createUser(UserRequest request) {
+        // 自动路由到user-service服务，实现负载均衡
+        return userService.createUser(request);
     }
 }
 ```
 
-## 高级特性
+## 7. 常见问题
 
-### 1. 分布式锁
+### Redis连接问题
 
-```java
-@LqLock(key = "order.create", ttl = QKey.ONE_MINUTE)
-public void handleOrderCreate(OrderDTO order) {
-    // 处理订单创建消息
-}
-```
+如果遇到Redis连接问题，请检查以下配置：
+- Redis服务器地址和端口是否正确
+- 密码是否正确
+- 网络环境是否允许连接
+- Redis服务是否正常运行
 
-### 2. 消息总线
+### 消息队列消费不及时
 
-```java
-@LqMQListener(even = "event.topic")
-public void handleEvent(Event event) {
-    // 处理事件
-}
-```
+消息队列消费不及时可能有以下原因：
+- 消费者数量不足
+- 消息处理逻辑过重
+- Redis服务负载过高
 
-## 最佳实践
-1. 合理设置过期时间，避免缓存永久存在
-2. 使用版本号管理缓存更新
-3. 根据业务场景选择合适的消息队列类型
-4. 合理配置连接池参数
-5. 在分布式环境下使用哨兵或集群模式
+可以增加消费者数量或优化处理逻辑来解决。
 
-## 注意事项
-1. 避免使用永久缓存
-2. 注意处理并发情况下的锁超时
-3. 消息处理要做好幂等性控制
-4. 合理设置重试策略
-5. 注意异常处理和日志记录
+### 分布式锁获取失败
+
+分布式锁获取失败可能有以下原因：
+- 锁已被其他服务持有
+- 锁的TTL设置过短，未能完成操作就过期
+- Redis网络连接不稳定
+
+建议适当增加锁的等待时间或TTL，并确保网络稳定。
+
+### 服务注册与发现问题
+
+服务注册与发现问题可能有以下原因：
+- 服务节点信息不完整
+- 心跳更新失败
+- Redis连接问题
+
+建议检查服务节点信息和Redis连接，确保心跳正常更新。
+
+---
+
+更多详细信息，请参考[官方文档](https://github.com/aisen1024/lq-cloud)或提交Issue。

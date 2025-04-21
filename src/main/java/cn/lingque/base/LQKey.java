@@ -4,7 +4,6 @@ import cn.hutool.core.date.DateField;
 import cn.hutool.core.date.DateUtil;
 import cn.lingque.mq.exten.LQLazyQueue;
 import cn.lingque.mq.exten.LQSequenceQueue;
-import cn.lingque.mq.exten.LQTimingWheelQueue;
 import cn.lingque.mq.exten.LQUniqueQueue;
 import cn.lingque.redis.LingQueRedis;
 import cn.lingque.redis.exten.*;
@@ -92,10 +91,6 @@ public class LQKey<T> {
 
     public LQSequenceQueue<T> ofSequenceQueue(Object... params) {
         return new LQSequenceQueue(rd(params));
-    }
-
-    public LQTimingWheelQueue<T> ofTimingWheelQueue(Object... params) {
-        return new LQTimingWheelQueue(rd(params));
     }
 
     public LQUniqueQueue<T> ofUniqueQueue(Object... params) {

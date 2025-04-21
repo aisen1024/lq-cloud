@@ -150,4 +150,22 @@ public class LingQueRedis extends BaseOpt{
         }
     }
 
+    /**
+     * 获取原始执行器（带重试机制）
+     * @param exec 执行器
+     * @param maxRetries 最大重试次数
+     * @return 执行结果
+     */
+    public Object execBaseWithRetry(BaseSimpleExec exec, int maxRetries) {
+        return JedisProxy.execBaseWithRetry(exec, maxRetries);
+    }
+
+    /**
+     * 获取原始执行器（带重试机制，默认3次重试）
+     * @param exec 执行器
+     * @return 执行结果
+     */
+    public Object execBaseWithRetry(BaseSimpleExec exec) {
+        return execBaseWithRetry(exec, 3);
+    }
 }

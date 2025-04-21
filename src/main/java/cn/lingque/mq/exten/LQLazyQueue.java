@@ -47,7 +47,7 @@ public class LQLazyQueue<T> implements IMQConsumer<ILQMessage<T>,T> {
             if (msgList.isEmpty()){
                 return;
             }
-            redis.execBase((jedis) -> {
+            redis.execBaseWithRetry((jedis) -> {
                 if (!msgList.isEmpty()) {
                     for (RedisRank msgInfo : msgList) {
                         String msg = msgInfo.getMemberId();
