@@ -40,7 +40,7 @@
 <dependency>
     <groupId>io.github.aisen1024</groupId>
     <artifactId>lq-cloud</artifactId>
-    <version>1.0.5</version>
+    <version>1.0.7</version>
 </dependency>
 ```
 
@@ -278,10 +278,6 @@ public class UniqueQueueConsumer {
 
 ### 启动消息总线
 
-```java
-// 启动消息总线，参数为服务名
-LQBus.startBus("order-service");
-```
 
 ### 消息发送
 
