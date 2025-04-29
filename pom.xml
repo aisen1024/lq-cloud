@@ -6,7 +6,7 @@
 
     <groupId>io.github.aisen1024</groupId>
     <artifactId>lq-cloud</artifactId>
-    <version>1.0.5</version>
+    <version>1.0.7</version>
     <packaging>jar</packaging>
     <description>spring cloud 下一代微服务架构</description>
     <url>https://github.com/aisen1024/lq-cloud</url>
@@ -50,6 +50,7 @@
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <serverId>central</serverId>
+        <therapi-javadoc.version>0.15.0</therapi-javadoc.version>
     </properties>
 
     <dependencies>
@@ -87,6 +88,13 @@
             <groupId>com.dtflys.forest</groupId>
             <artifactId>forest-spring-boot3-starter</artifactId>
             <version>1.5.36</version>
+        </dependency>
+
+
+        <dependency>
+            <groupId>com.github.therapi</groupId>
+            <artifactId>therapi-runtime-javadoc</artifactId>
+            <version>${therapi-javadoc.version}</version>
         </dependency>
 
 

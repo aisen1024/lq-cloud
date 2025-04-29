@@ -105,9 +105,9 @@ public class LingQueRedis extends BaseOpt{
      * @param <T>
      */
     public <T>T exec(BaseExec<T> exec){
-        try (Jedis jedis = getRedisTemplate()){
+       return JedisProxy.execBaseWithRetry((jedis)->{
             return exec.exec(jedis,key,ttl,this);
-        }
+        },10);
     }
 
     /**
@@ -117,9 +117,7 @@ public class LingQueRedis extends BaseOpt{
      * @param <T>
      */
     public <T>T execWithRunner(BaseExec<T> exec){
-        try (Jedis jedis = getRedisTemplate()) {
-            return run(() -> exec.exec(jedis, key, ttl, this));
-        }
+       return JedisProxy.execBaseWithRetry((jedis)->run(() -> exec.exec(jedis, key, ttl, this)),10);
     }
 
 
@@ -137,17 +135,7 @@ public class LingQueRedis extends BaseOpt{
      * @return
      */
     public Object execBase(BaseSimpleExec exec){
-        Jedis jedis = getRedisTemplate();
-        try{
-            return exec.exec(jedis);
-        }catch (JedisConnectionException j){
-            JedisProxy.returnJedis(jedis,0);
-            throw new RuntimeException(j);
-        } finally {
-            if (jedis != null) {
-                JedisProxy.returnJedis(jedis,1);
-            }
-        }
+        return JedisProxy.execBaseWithRetry(exec,10);
     }
 
     /**

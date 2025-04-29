@@ -15,6 +15,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -415,7 +416,12 @@ public class LQUtil<T>{
      * @param unit
      */
     public static void execLoadJob(String jobName, Runnable runnable, long initialDelay, long period, TimeUnit unit) {
-        Executors.newSingleThreadScheduledExecutor().scheduleAtFixedRate(()->{
+        ThreadFactory threadFactory = r -> {
+            Thread thread = Executors.defaultThreadFactory().newThread(r);
+            thread.setName("LQ-JOB-" + jobName);
+            return thread;
+        };
+        Executors.newSingleThreadScheduledExecutor(threadFactory).scheduleAtFixedRate(()->{
             //为了避免异常导致任务停止，这个进行统一异常处理
             TryCatch.trying(jobName,()->{
                 runnable.run();

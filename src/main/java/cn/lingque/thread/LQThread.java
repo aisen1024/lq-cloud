@@ -29,7 +29,7 @@ public class LQThread {
             SecurityManager s = System.getSecurityManager();
             group = (s != null) ? s.getThreadGroup() :
                     Thread.currentThread().getThreadGroup();
-            namePrefix = name + "-thread-";
+            namePrefix = "LQ-THREAD-" + name + "-";
         }
 
         public Thread newThread(Runnable r) {
@@ -47,8 +47,8 @@ public class LQThread {
 
     public static LQThread init(LQProperties p){
         LQThread LQThread = new LQThread();
-        LQThread.master = new ThreadPoolExecutor(p.getMasterPool().getCorePoolSize(), p.getMasterPool().getMaximumPoolSize(), p.getMasterPool().getKeepAliveTime(), TimeUnit.MILLISECONDS, new ArrayBlockingQueue<Runnable>(p.getMasterPool().getMaximumPoolSize() * 10),new NamedThreadFactory("lq-master"), new ThreadPoolExecutor.CallerRunsPolicy());
-        LQThread.slave = new ThreadPoolExecutor(p.getSlavePool().getCorePoolSize(), p.getSlavePool().getMaximumPoolSize(), p.getSlavePool().getKeepAliveTime(), TimeUnit.MILLISECONDS, new ArrayBlockingQueue<Runnable>(p.getSlavePool().getMaximumPoolSize() * 10),new NamedThreadFactory("lq-slave"), new ThreadPoolExecutor.CallerRunsPolicy());
+        LQThread.master = new ThreadPoolExecutor(p.getMasterPool().getCorePoolSize(), p.getMasterPool().getMaximumPoolSize(), p.getMasterPool().getKeepAliveTime(), TimeUnit.MILLISECONDS, new ArrayBlockingQueue<Runnable>(p.getMasterPool().getMaximumPoolSize() * 10),new NamedThreadFactory("master"), new ThreadPoolExecutor.CallerRunsPolicy());
+        LQThread.slave = new ThreadPoolExecutor(p.getSlavePool().getCorePoolSize(), p.getSlavePool().getMaximumPoolSize(), p.getSlavePool().getKeepAliveTime(), TimeUnit.MILLISECONDS, new ArrayBlockingQueue<Runnable>(p.getSlavePool().getMaximumPoolSize() * 10),new NamedThreadFactory("slave"), new ThreadPoolExecutor.CallerRunsPolicy());
         return LQThread;
     }
 

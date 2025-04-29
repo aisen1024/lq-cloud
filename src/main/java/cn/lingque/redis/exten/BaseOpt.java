@@ -24,13 +24,8 @@ public class BaseOpt {
      * @return
      */
     public Boolean isExistKey() {
-        return getRedisTemplate().exists(key);
+        return JedisProxy.execBaseWithRetry((j)->j.exists(key),10);
     }
-
-    protected Jedis getRedisTemplate(){
-        return JedisProxy.getRedisInstance();
-    }
-
 
     /**
      * 设置过期时间
@@ -44,7 +39,7 @@ public class BaseOpt {
      * 获取过期时间
      */
     public Long getTTL() {
-        return getRedisTemplate().ttl(key);
+        return JedisProxy.execBaseWithRetry((j)->j.ttl(key),10);
     }
 
     /**
@@ -53,7 +48,7 @@ public class BaseOpt {
      * @return
      */
     public boolean delete() {
-        return getRedisTemplate().del(key) > 0;
+        return JedisProxy.execBaseWithRetry((j)->j.del(key) > 0,10);
     }
 
     /**
@@ -73,7 +68,7 @@ public class BaseOpt {
      */
     public void resetTTL(Long t) {
         if (t > 0){
-            getRedisTemplate().expire(key, t);
+            JedisProxy.execBaseWithRetry((j)->j.expire(key,t),10);
         }
     }
 }

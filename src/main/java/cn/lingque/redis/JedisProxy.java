@@ -175,7 +175,7 @@ public class JedisProxy {
     /**
      * 获取Jedis
      */
-    public static Jedis getRedisInstance() {
+    private static Jedis getRedisInstance() {
         if (redisInstance == null) {
             throw new RuntimeException("redisInstance is null, please init redisInstance first");
         }
@@ -260,7 +260,11 @@ public class JedisProxy {
                     autoLoadSource();
                 }
             }else {
-                useMap.get(jedis).decrementAndGet();
+               TryCatch.tryingIgnoreError(()->{
+                   AtomicInteger atomicInteger = useMap.get(jedis);
+                   if (atomicInteger!=null)
+                       atomicInteger.decrementAndGet();
+               });
             }
     }
 
@@ -317,7 +321,7 @@ public class JedisProxy {
         loadSource(minInstance);
     }
 
-    public static Object execBaseWithRetry(LingQueRedis.BaseSimpleExec exec, int maxRetries) {
+    public static <E>E execBaseWithRetry(LingQueRedis.BaseSimpleExec exec, int maxRetries) {
         int retryCount = 0;
         Jedis jedis = null;
         Exception lastException = null;
@@ -339,7 +343,7 @@ public class JedisProxy {
                     }
                 }
                 
-                return exec.exec(jedis);
+                return (E)exec.exec(jedis);
             } catch (JedisConnectionException j) {
                 lastException = j;
                 log.warn("Redis连接异常，尝试重试 ({}/{})", retryCount + 1, maxRetries, j);

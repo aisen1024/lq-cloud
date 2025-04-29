@@ -43,6 +43,14 @@ public class TryCatch<R> {
         }
     }
 
+    public static void tryingIgnoreError(TrySomething exec) {
+        try {
+            exec.trying();
+        } catch (Exception e) {
+            log.debug("TryCatch 异常 ", e);
+        }
+    }
+
     /**
      * 简化try-catch
      *
