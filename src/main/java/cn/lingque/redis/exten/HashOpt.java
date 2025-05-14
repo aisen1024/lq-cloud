@@ -3,15 +3,19 @@ package cn.lingque.redis.exten;
 import cn.hutool.json.JSONUtil;
 import cn.lingque.redis.LingQueRedis;
 import cn.lingque.util.LQUtil;
-import lombok.AllArgsConstructor;
 import lombok.Data;
 
 import java.util.*;
 
 @Data
-@AllArgsConstructor
 public class HashOpt extends BaseOpt{
     private LingQueRedis lingQueRedis;
+
+    public HashOpt(LingQueRedis lingQueRedis) {
+        this.lingQueRedis = lingQueRedis;
+        this.key = lingQueRedis.key;
+        this.ttl = lingQueRedis.ttl;
+    }
 
     /**
      * 设置哈希缓存并更新过期时间

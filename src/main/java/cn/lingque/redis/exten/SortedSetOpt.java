@@ -10,9 +10,14 @@ import lombok.Data;
 import java.util.*;
 
 @Data
-@AllArgsConstructor
 public class SortedSetOpt extends BaseOpt{
     private LingQueRedis lingQueRedis;
+
+    public SortedSetOpt(LingQueRedis lingQueRedis) {
+        this.lingQueRedis = lingQueRedis;
+        this.key = lingQueRedis.key;
+        this.ttl = lingQueRedis.ttl;
+    }
 
     // Lua 脚本常量
     private static final String ZADD_SCRIPT = 

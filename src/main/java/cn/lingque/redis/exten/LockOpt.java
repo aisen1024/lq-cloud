@@ -17,6 +17,8 @@ public class LockOpt extends BaseOpt{
 
     public LockOpt(LingQueRedis lingQueRedis) {
         this.lingQueRedis = lingQueRedis;
+        this.key = lingQueRedis.key;
+        this.ttl = lingQueRedis.ttl;
     }
 
     /**

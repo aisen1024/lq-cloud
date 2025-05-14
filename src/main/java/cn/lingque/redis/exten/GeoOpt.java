@@ -1,7 +1,6 @@
 package cn.lingque.redis.exten;
 
 import cn.lingque.redis.LingQueRedis;
-import lombok.AllArgsConstructor;
 import redis.clients.jedis.GeoCoordinate;
 import redis.clients.jedis.args.GeoUnit;
 import redis.clients.jedis.params.GeoRadiusParam;
@@ -10,9 +9,16 @@ import redis.clients.jedis.resps.GeoRadiusResponse;
 
 import java.util.*;
 
-@AllArgsConstructor
 public class GeoOpt extends BaseOpt{
     private LingQueRedis lingQueRedis;
+
+
+    public GeoOpt(LingQueRedis lingQueRedis) {
+        this.lingQueRedis = lingQueRedis;
+        this.key = lingQueRedis.key;
+        this.ttl = lingQueRedis.ttl;
+    }
+
 
     private static final String ADD_GEO_SCRIPT = 
         "redis.call('GEOADD', KEYS[1], ARGV[1], ARGV[2], ARGV[3]); " +

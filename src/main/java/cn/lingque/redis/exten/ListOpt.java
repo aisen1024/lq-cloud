@@ -16,10 +16,15 @@ import java.util.stream.Collectors;
  * @date 2024/9/25
  * @desc 简单说一下
  **/
-@AllArgsConstructor
 public class ListOpt extends BaseOpt{
 
     private LingQueRedis lingQueRedis;
+
+    public ListOpt(LingQueRedis lingQueRedis) {
+        this.lingQueRedis = lingQueRedis;
+        this.key = lingQueRedis.key;
+        this.ttl = lingQueRedis.ttl;
+    }
 
     // 添加 Lua 脚本常量
     private static final String DELETE_FIRST_SCRIPT =

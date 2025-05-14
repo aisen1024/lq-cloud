@@ -3,9 +3,7 @@ package cn.lingque.redis.exten;
 import cn.hutool.json.JSONUtil;
 import cn.lingque.redis.LingQueRedis;
 import cn.lingque.util.LQUtil;
-import lombok.AllArgsConstructor;
 import lombok.Data;
-import redis.clients.jedis.Jedis;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -16,7 +14,10 @@ public class SetOpt extends BaseOpt{
 
     public SetOpt(LingQueRedis lingQueRedis) {
         this.lingQueRedis = lingQueRedis;
+        this.key = lingQueRedis.key;
+        this.ttl = lingQueRedis.ttl;
     }
+
 
     /**
      * set添加数据并更新过期时间
