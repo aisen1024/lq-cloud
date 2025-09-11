@@ -35,7 +35,7 @@ public class LQLazyQueue<T> implements IMQConsumer<ILQMessage<T>,T> {
      * @return
      */
     public boolean cancelMessage(Object message){
-         return redis.ofZSet().delete(LQUtil.isBaseValue(message) ? message.toString(): JSONUtil.toJsonStr(message));
+         return redis.ofZSet().zrem(LQUtil.isBaseValue(message) ? message.toString(): JSONUtil.toJsonStr(message)) > 0;
     }
 
 
@@ -53,14 +53,14 @@ public class LQLazyQueue<T> implements IMQConsumer<ILQMessage<T>,T> {
                         String msg = msgInfo.getMemberId();
                         TryCatch.trying(() -> {
                                     String ackKey = redis.key + ":consumer:ack:" + LQUtil.getMD5(msg);
-                                    if (jedis.setnx(ackKey, "ack") > 0) {
+                                    if (jedis.setnx(ackKey, "ack")) {
                                         jedis.expire(ackKey, 10);
                                         handle.forEach(h -> {
                                             LQThreadUtil.execSlave(() -> TryCatch.trying(() -> h.handle(
                                                     (LQUtil.isBasClass( h.getEntityClass()) ? LQUtil.baseClassTran(msg, h.getEntityClass()) : LQUtil.jsonToBean(msg,  h.getEntityClass()))
                                             )));
                                         });
-                                        TryCatch.trying(() -> redis.ofZSet().delete(msg));
+                                        TryCatch.trying(() -> redis.ofZSet().zrem(msg));
                                     }
                                 }
                         );

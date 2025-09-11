@@ -9,6 +9,7 @@ import cn.lingque.util.TryCatch;
 import lombok.AllArgsConstructor;
 
 import java.util.List;
+import java.util.Set;
 
 /**
  * @author aisen
@@ -25,7 +26,7 @@ public class LQUniqueQueue<T> implements  IMQConsumer<ILQMessage<T>,T> {
      * @param message
      */
     public void pushMessage(Object message){
-        redis.ofSet().add(message);
+        redis.ofSet().addMember(message);
     }
     /**
      * 取消消息
@@ -39,8 +40,9 @@ public class LQUniqueQueue<T> implements  IMQConsumer<ILQMessage<T>,T> {
 
     @Override
     public void consumer(List<ILQMessage<T>> handle) {
-        String messages = redis.ofSet().pop();
-        if (LQUtil.isNotEmpty(messages)) {
+        Set<String> messagesSet = redis.ofSet().popMembers(1);
+        if (LQUtil.isNotEmpty(messagesSet)) {
+            String messages = messagesSet.iterator().next();
             handle.forEach(h->{
                 LQThreadUtil.execSlave(()-> TryCatch.trying(() -> h.handle(
                         (LQUtil.isBasClass(h.getEntityClass()) ? LQUtil.baseClassTran(messages, h.getEntityClass()) : LQUtil.jsonToBean(messages, h.getEntityClass()))

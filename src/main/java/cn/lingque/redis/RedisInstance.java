@@ -1,196 +1,146 @@
 package cn.lingque.redis;
 
-import cn.hutool.json.JSONUtil;
 import cn.lingque.config.LQProperties;
-import cn.lingque.util.TryCatch;
-import lombok.Data;
+import io.lettuce.core.*;
+import io.lettuce.core.api.StatefulRedisConnection;
+import io.lettuce.core.api.sync.RedisCommands;
+import io.lettuce.core.cluster.RedisClusterClient;
+import io.lettuce.core.cluster.api.StatefulRedisClusterConnection;
+import io.lettuce.core.codec.StringCodec;
+import io.lettuce.core.masterreplica.MasterReplica;
+import io.lettuce.core.masterreplica.StatefulRedisMasterReplicaConnection;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
-import redis.clients.jedis.*;
 
 import java.time.Duration;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.List;
 import java.util.stream.Collectors;
 
 @Slf4j
 public class RedisInstance {
-    /**哨兵模式*/
-    private  JedisSentinelPool sentinel;
-    /**单机模式*/
-    private  JedisPool standalone;
-    /**集群模式*/
-    private  JedisCluster cluster;
-    /**模式选择*/
-    private  String mode;
+    private RedisClient standaloneClient;
+    private RedisClusterClient clusterClient;
+    private StatefulRedisConnection<String, String> standaloneConnection;
+    private StatefulRedisMasterReplicaConnection<String, String> sentinelConnection;
+    private StatefulRedisClusterConnection<String, String> clusterConnection;
+    private String mode;
 
-    /**
-     * 初始化Redis连接
-     * @param redisPlusProperties Redis配置属性
-     */
     public RedisInstance(LQProperties redisPlusProperties) {
-       // 配置连接池
-       JedisPoolConfig poolConfig = new JedisPoolConfig();
-       // 增加最大连接数 - 参考SpringBoot默认值
-       poolConfig.setMaxTotal(redisPlusProperties.getMaxTotal() != 0 ? redisPlusProperties.getMaxTotal() : 8);
-       // 增加最大空闲连接数 - 参考SpringBoot默认值
-       poolConfig.setMaxIdle(redisPlusProperties.getMaxIdle() != 0 ? redisPlusProperties.getMaxIdle() : 8);
-       // 设置最小空闲连接数 - 参考SpringBoot默认值
-       poolConfig.setMinIdle(redisPlusProperties.getMinIdle() != 0 ? redisPlusProperties.getMinIdle() : 0);
-       // 当池内没有可用连接时，最大等待时间
-       Duration maxWait = Duration.ofMillis(redisPlusProperties.getMaxWaitMillis() != 0 ? 
-           redisPlusProperties.getMaxWaitMillis() : -1);
-       poolConfig.setMaxWait(maxWait);
-       
-       // 开启jmx监控 - 默认关闭以减少开销
-       poolConfig.setJmxEnabled(false);
-       // 连接对象后进先出
-       poolConfig.setLifo(true);
-       // 在获取连接时检查有效性 - 默认false以提高性能
-       poolConfig.setTestOnBorrow(true);
-       // 在归还连接时检查有效性 - 默认false以提高性能
-       poolConfig.setTestOnReturn(false);
-       // 定时检查空闲连接
-       poolConfig.setTestWhileIdle(true);
-       //连接池耗尽时，获取连接是否阻塞等待
-       poolConfig.setBlockWhenExhausted(true);
-       // 空闲连接检查间隔时间 - 参考SpringBoot默认值
-       poolConfig.setTimeBetweenEvictionRuns(Duration.ofMillis(redisPlusProperties.getTimeBetweenEvictionRuns() != 0 ?
-           redisPlusProperties.getTimeBetweenEvictionRuns() : 100));
-       // 每次检查空闲连接的数量
-       poolConfig.setNumTestsPerEvictionRun(-1);  // 检查所有空闲连接
-       // 连接最小空闲时间
-       poolConfig.setMinEvictableIdleTime(Duration.ofMillis(redisPlusProperties.getMinEvictableIdleTimeMillis() != 0 ? 
-           redisPlusProperties.getMinEvictableIdleTimeMillis() : 1800000));  // 默认30分钟
-       // 设置空闲对象驱逐后最小空闲数量
-       poolConfig.setSoftMinEvictableIdleDuration(Duration.ofMillis(1800000));
-
         try {
             switch (redisPlusProperties.getMode().toLowerCase()) {
                 case "standalone":
-                    initStandalone(redisPlusProperties, poolConfig);
+                    initStandalone(redisPlusProperties);
                     break;
                 case "sentinel":
-                    initSentinel(redisPlusProperties, poolConfig);
+                    initSentinel(redisPlusProperties);
                     break;
                 case "cluster":
-                    initCluster(redisPlusProperties, poolConfig);
+                    initCluster(redisPlusProperties);
                     break;
                 default:
                     throw new IllegalArgumentException("Unsupported Redis mode: " + redisPlusProperties.getMode());
             }
-
             mode = redisPlusProperties.getMode();
-
         } catch (Exception e) {
             throw new RuntimeException("Failed to initialize Redis connection", e);
         }
     }
 
-
-
-    /**
-     * 初始化单机模式连接池
-     */
-    private  void initStandalone(LQProperties props, JedisPoolConfig poolConfig) {
-        standalone = new JedisPool(
-                poolConfig,
-                props.getIp(),
-                Integer.parseInt(props.getPort()),
-                props.getTimeout(),
-                props.getUsername(),
-                props.getPassword(),
-                props.getDb()
-        );
+    private void initStandalone(LQProperties props) {
+        ClientOptions clientOptions = createClientOptions(props);
+        standaloneClient = RedisClient.create(createRedisURI(props));
+        standaloneClient.setDefaultTimeout(Duration.ofMillis(props.getTimeout()));
+        standaloneConnection = standaloneClient.connect();
     }
 
-    /**
-     * 初始化哨兵模式连接池
-     */
-    private void initSentinel(LQProperties props, JedisPoolConfig poolConfig) {
-        Set<String> sentinels = new HashSet<>(props.getSentinel().getSentinelNodes());
-        sentinel = new JedisSentinelPool(
-                props.getSentinel().getMaster(),
-                sentinels,
-                poolConfig,
-                props.getTimeout(),
-                props.getPassword(),
-                props.getDb()
-        );
-    }
-
-    /**
-     * 初始化集群模式连接池
-     */
-    private void initCluster(LQProperties props, JedisPoolConfig poolConfig) {
-        Set<HostAndPort> nodes = props.getCluster().getClusterNodes().stream()
+    private void initSentinel(LQProperties props) {
+        List<RedisURI> sentinelUris = props.getSentinel().getSentinelNodes().stream()
                 .map(node -> {
                     String[] parts = node.split(":");
-                    return new HostAndPort(parts[0], Integer.parseInt(parts[1]));
+                    return RedisURI.builder()
+                            .withHost(parts[0])
+                            .withPort(Integer.parseInt(parts[1]))
+                            .withPassword(props.getPassword().toCharArray())
+                            .build();
                 })
-                .collect(Collectors.toSet());
-        GenericObjectPoolConfig<Connection> config = JSONUtil.toBean(JSONUtil.toJsonStr(poolConfig),GenericObjectPoolConfig.class);
-        cluster = new JedisCluster(
-                nodes,
-                props.getTimeout() ,
-                props.getTimeout(),
-                3,  // 最大重试次数
-                props.getPassword(),
-                config
-        );
+                .collect(Collectors.toList());
+
+        RedisClient redisClient = RedisClient.create();
+        redisClient.setDefaultTimeout(Duration.ofMillis(props.getTimeout()));
+        
+        sentinelConnection = MasterReplica.connect(redisClient, 
+                StringCodec.UTF8,
+                sentinelUris);
+        sentinelConnection.setReadFrom(ReadFrom.MASTER_PREFERRED);
     }
 
+    private void initCluster(LQProperties props) {
+        List<RedisURI> clusterNodes = props.getCluster().getClusterNodes().stream()
+                .map(node -> {
+                    String[] parts = node.split(":");
+                    return RedisURI.builder()
+                            .withHost(parts[0])
+                            .withPort(Integer.parseInt(parts[1]))
+                            .withPassword(props.getPassword().toCharArray())
+                            .withDatabase(props.getDb())
+                            .withTimeout(Duration.ofMillis(props.getTimeout()))
+                            .build();
+                })
+                .collect(Collectors.toList());
 
-    public Jedis getRedisTemplate() {
-        Jedis jedis = null;
-        if ("sentinel".equalsIgnoreCase(mode)) {
-            // Sentinel mode configuration
-            jedis= sentinel.getResource();
-        } else if ("cluster".equalsIgnoreCase(mode)) {
-            // Cluster mode configuration
-            ConnectionPool pool = cluster.getClusterNodes().values().stream().findAny().get();
-            jedis = new JedisObj(pool,pool.getResource());
-        }else {
-            // Standalone mode configuration
-            jedis= standalone.getResource();
+        clusterClient = RedisClusterClient.create(clusterNodes);
+        clusterClient.setDefaultTimeout(Duration.ofMillis(props.getTimeout()));
+        clusterConnection = clusterClient.connect();
+    }
+
+    private ClientOptions createClientOptions(LQProperties props) {
+        return ClientOptions.builder()
+                .autoReconnect(true)
+                .disconnectedBehavior(ClientOptions.DisconnectedBehavior.REJECT_COMMANDS)
+                .socketOptions(SocketOptions.builder()
+                        .connectTimeout(Duration.ofMillis(props.getTimeout()))
+                        .keepAlive(true)
+                        .build())
+                .build();
+    }
+
+    private RedisURI createRedisURI(LQProperties props) {
+        return RedisURI.builder()
+                .withHost(props.getIp())
+                .withPort(Integer.parseInt(props.getPort()))
+                .withPassword(props.getPassword().toCharArray())
+                .withDatabase(props.getDb())
+                .withTimeout(Duration.ofMillis(props.getTimeout()))
+                .build();
+    }
+
+    public RedisCommands<String, String> getRedisCommands() {
+        switch (mode.toLowerCase()) {
+            case "standalone":
+                return standaloneConnection.sync();
+            case "sentinel":
+                return sentinelConnection.sync();
+            case "cluster":
+                return (RedisCommands<String, String>) clusterConnection.sync();
+            default:
+                throw new IllegalStateException("Unknown Redis mode: " + mode);
         }
-        return jedis;
     }
 
-    public void returnBrokenResource(Jedis jedis) {
-        log.debug("回收损坏的资源---》jedis ->{}",jedis.hashCode());
-        TryCatch.trying(()->{
-           switch (mode){
-               case "standalone":
-                   standalone.returnBrokenResource(jedis);
-                   break;
-               case "sentinel":
-                   sentinel.returnBrokenResource(jedis);
-                   break;
-               case "cluster":
-                   ((JedisObj)jedis).returnBrokenResource();
-                   break;
-           }
-        },"closeJedis回收资源");
+    public void close() {
+        if (standaloneConnection != null) {
+            standaloneConnection.close();
+        }
+        if (sentinelConnection != null) {
+            sentinelConnection.close();
+        }
+        if (clusterConnection != null) {
+            clusterConnection.close();
+        }
+        if (standaloneClient != null) {
+            standaloneClient.shutdown();
+        }
+        if (clusterClient != null) {
+            clusterClient.shutdown();
+        }
     }
-
-    public void returnResource(Jedis jedis) {
-        log.debug("回收资源---》jedis ->{}",jedis.hashCode());
-        TryCatch.trying(()->{
-            switch (mode){
-                case "standalone":
-                    standalone.returnResource(jedis);
-                    break;
-                case "sentinel":
-                    sentinel.returnResource(jedis);
-                    break;
-                case "cluster":
-                    ((JedisObj)jedis).returnResource();
-                    break;
-            }
-        },"closeJedis回收资源");
-    }
-
-
-
 }

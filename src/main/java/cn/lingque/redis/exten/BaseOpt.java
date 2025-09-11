@@ -1,8 +1,6 @@
 package cn.lingque.redis.exten;
 
-
 import cn.lingque.redis.JedisProxy;
-import redis.clients.jedis.Jedis;
 
 import java.util.Objects;
 
@@ -20,11 +18,9 @@ public class BaseOpt {
     
     /**
      * 是否存在
-     *
-     * @return
      */
     public Boolean isExistKey() {
-        return JedisProxy.execBaseWithRetry((j)->j.exists(key),10);
+        return JedisProxy.execBaseWithRetry((commands) -> commands.exists(key) > 0, 10);
     }
 
     /**
@@ -34,41 +30,38 @@ public class BaseOpt {
         resetTTL(ttl);
     }
 
-
     /**
      * 获取过期时间
      */
     public Long getTTL() {
-        return JedisProxy.execBaseWithRetry((j)->j.ttl(key),10);
+        return JedisProxy.execBaseWithRetry((commands) -> commands.ttl(key), 10);
     }
 
     /**
      * 删除key
-     *
-     * @return
      */
     public boolean delete() {
-        return JedisProxy.execBaseWithRetry((j)->j.del(key) > 0,10);
+        return JedisProxy.execBaseWithRetry((commands) -> commands.del(key) > 0, 10);
     }
 
     /**
      * 是否为空缓存
-     *
-     * @param value
-     * @return
      */
     public boolean isNullCache(Object value) {
-        return null != value && Objects.equals(NULL_VALUE,value.toString());
+        return null != value && Objects.equals(NULL_VALUE, value.toString());
     }
-
 
     /**
      * 重置ttl的时间
      * @param t 时间 单位秒
      */
     public void resetTTL(Long t) {
-        if (t > 0){
-            JedisProxy.execBaseWithRetry((j)->j.expire(key,t),10);
+        if (t > 0) {
+            JedisProxy.execBaseWithRetry((commands) -> commands.expire(key, t), 10);
         }
+    }
+
+    public String getKey(){
+        return key;
     }
 }

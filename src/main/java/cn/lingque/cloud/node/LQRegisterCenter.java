@@ -106,11 +106,11 @@ public class LQRegisterCenter {
                                 if (timeoutSvList != null && timeoutSvList.size() > 0) {
                                     String[] keys = new String[timeoutSvList.size()];
                                     keys = timeoutSvList.toArray(keys);
-                                    svHandle.ofZSet().delete(keys);
+                                    svHandle.ofZSet().zremAll(List.of(keys));
                                 }
                                 //如果当前服务组节点都没有了，直接下架服务
                                 if (svHandle.ofZSet().size() <= 0) {
-                                    svGroupService.rd().ofZSet().delete(sv);
+                                    svGroupService.rd().ofZSet().zrem(sv);
                                 }
                             } catch (Exception e) {
                                 log.error("注册节点并发布心跳异常 | {} ", sv);

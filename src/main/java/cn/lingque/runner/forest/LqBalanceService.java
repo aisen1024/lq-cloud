@@ -57,7 +57,7 @@ public class LqBalanceService {
                     //移除熔断过期节点
                     List<String> timeoutmMltdownList = meltdownList.stream().filter(i -> i.getScore() < System.currentTimeMillis()).map(i -> i.getMemberId()).collect(Collectors.toList());
                     if(timeoutmMltdownList.size() > 0)
-                        meltdownService.rd().ofZSet().delete(timeoutmMltdownList.toArray(new String[meltdownList.size()]));
+                        meltdownService.rd().ofZSet().zremAll(timeoutmMltdownList);
                 }
 
         }, 1, 1, TimeUnit.SECONDS);

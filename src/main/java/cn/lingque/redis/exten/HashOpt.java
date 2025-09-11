@@ -3,13 +3,40 @@ package cn.lingque.redis.exten;
 import cn.hutool.json.JSONUtil;
 import cn.lingque.redis.LingQueRedis;
 import cn.lingque.util.LQUtil;
+import io.lettuce.core.ScriptOutputType;
 import lombok.Data;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Data
-public class HashOpt extends BaseOpt{
+public class HashOpt extends BaseOpt {
     private LingQueRedis lingQueRedis;
+
+    private static final String HSET_AND_EXPIRE_SCRIPT = 
+        "redis.call('HSET', KEYS[1], ARGV[1], ARGV[2]); " +
+        "redis.call('EXPIRE', KEYS[1], ARGV[3]); " +
+        "return 1;";
+
+    private static final String BATCH_HSET_AND_EXPIRE_SCRIPT =
+        "local count = 0; " +
+        "for i = 1, #ARGV - 1, 2 do " +
+        "    count = count + redis.call('HSET', KEYS[1], ARGV[i], ARGV[i+1]); " +
+        "end; " +
+        "redis.call('EXPIRE', KEYS[1], ARGV[#ARGV]); " +
+        "return count;";
+
+    private static final String HDEL_AND_EXPIRE_SCRIPT =
+        "local count = redis.call('HDEL', KEYS[1], unpack(ARGV, 1, #ARGV-1)); " +
+        "if redis.call('EXISTS', KEYS[1]) == 1 then " +
+        "    redis.call('EXPIRE', KEYS[1], ARGV[#ARGV]); " +
+        "end; " +
+        "return count;";
+
+    private static final String HINCRBY_AND_EXPIRE_SCRIPT =
+        "local value = redis.call('HINCRBY', KEYS[1], ARGV[1], ARGV[2]); " +
+        "redis.call('EXPIRE', KEYS[1], ARGV[3]); " +
+        "return value;";
 
     public HashOpt(LingQueRedis lingQueRedis) {
         this.lingQueRedis = lingQueRedis;
@@ -24,54 +51,41 @@ public class HashOpt extends BaseOpt{
      * @return 操作结果
      */
     public long set(String member, String value) {
-        String luaScript = 
-            "local result = redis.call('HSET', KEYS[1], ARGV[1], ARGV[2])\n" +
-            "redis.call('EXPIRE', KEYS[1], ARGV[3])\n" +
-            "return result";
-        return (Long)lingQueRedis.execBase((jedis) -> {
-            Object result = jedis.eval(
-                luaScript,
-                Collections.singletonList(lingQueRedis.key),
-                Arrays.asList(
-                    member,
-                    value,
-                    String.valueOf(lingQueRedis.ttl)
-                )
+        return (long) lingQueRedis.execBase((commands) -> {
+            Object result = commands.eval(
+                HSET_AND_EXPIRE_SCRIPT,
+                ScriptOutputType.INTEGER,
+                new String[]{lingQueRedis.key},
+                member, value, String.valueOf(lingQueRedis.ttl)
             );
-            return result != null ? Long.parseLong(result.toString()) : 0;
+            return result != null ? Long.parseLong(result.toString()) : 0L;
         });
     }
 
     /**
      * 批量添加或更新hash的值并更新过期时间
      * @param map 要设置的键值对
-     * @return 操作结果
+     * @return 添加的字段数量
      */
     public long setMap(Map<String, Object> map) {
-        String luaScript = 
-            "local result = 0\n" +
-            "for i = 1, #ARGV - 1, 2 do\n" +
-            "    result = result + redis.call('HSET', KEYS[1], ARGV[i], ARGV[i+1])\n" +
-            "end\n" +
-            "redis.call('EXPIRE', KEYS[1], ARGV[#ARGV])\n" +
-            "return result";
-
-        return (Long)lingQueRedis.execBase((jedis) -> {
-            List<String> args = new ArrayList<>();
+        return (long) lingQueRedis.execBase((commands) -> {
+            String[] args = new String[map.size() * 2 + 1];
+            int i = 0;
             for (Map.Entry<String, Object> entry : map.entrySet()) {
-                args.add(entry.getKey());
-                args.add(LQUtil.isBaseValue(entry.getValue()) ? 
+                args[i++] = entry.getKey();
+                args[i++] = LQUtil.isBaseValue(entry.getValue()) ? 
                     entry.getValue().toString() : 
-                    JSONUtil.toJsonStr(entry.getValue()));
+                    JSONUtil.toJsonStr(entry.getValue());
             }
-            args.add(String.valueOf(lingQueRedis.ttl));
+            args[i] = String.valueOf(lingQueRedis.ttl);
 
-            Object result = jedis.eval(
-                luaScript,
-                Collections.singletonList(lingQueRedis.key),
+            Object result = commands.eval(
+                BATCH_HSET_AND_EXPIRE_SCRIPT,
+                ScriptOutputType.INTEGER,
+                new String[]{lingQueRedis.key},
                 args
             );
-            return result != null ? Long.parseLong(result.toString()) : 0;
+            return result != null ? Long.parseLong(result.toString()) : 0L;
         });
     }
 
@@ -81,20 +95,14 @@ public class HashOpt extends BaseOpt{
      * @return 删除的字段数量
      */
     public Long deleteField(String... hk) {
-        String luaScript = 
-            "local result = redis.call('HDEL', KEYS[1], unpack(ARGV, 1, #ARGV-1))\n" +
-            "if redis.call('EXISTS', KEYS[1]) == 1 then\n" +
-            "    redis.call('EXPIRE', KEYS[1], ARGV[#ARGV])\n" +
-            "end\n" +
-            "return result";
+        return (Long) lingQueRedis.execBase((commands) -> {
+            String[] args = Arrays.copyOf(hk, hk.length + 1);
+            args[hk.length] = String.valueOf(lingQueRedis.ttl);
 
-        return (Long)lingQueRedis.execBase((jedis) -> {
-            List<String> args = new ArrayList<>(Arrays.asList(hk));
-            args.add(String.valueOf(lingQueRedis.ttl));
-
-            Object result = jedis.eval(
-                luaScript,
-                Collections.singletonList(lingQueRedis.key),
+            Object result = commands.eval(
+                HDEL_AND_EXPIRE_SCRIPT,
+                ScriptOutputType.INTEGER,
+                new String[]{lingQueRedis.key},
                 args
             );
             return result != null ? Long.parseLong(result.toString()) : 0L;
@@ -103,24 +111,14 @@ public class HashOpt extends BaseOpt{
 
     /**
      * 自增哈希的值并更新过期时间
-     * @param memberId 成员ID
-     * @param num 增加的值
-     * @return 增加后的值
      */
     public Long incrHashValue(String memberId, long num) {
-        String luaScript = 
-            "local value = redis.call('HINCRBY', KEYS[1], ARGV[1], ARGV[2])\n" +
-            "redis.call('EXPIRE', KEYS[1], ARGV[3])\n" +
-            "return value";
-        return (long)lingQueRedis.execBase((jedis) -> {
-            Object result = jedis.eval(
-                luaScript,
-                Collections.singletonList(lingQueRedis.key),
-                Arrays.asList(
-                    memberId,
-                    String.valueOf(num),
-                    String.valueOf(lingQueRedis.ttl)
-                )
+        return (Long) lingQueRedis.execBase((commands) -> {
+            Object result = commands.eval(
+                HINCRBY_AND_EXPIRE_SCRIPT,
+                ScriptOutputType.INTEGER,
+                new String[]{lingQueRedis.key},
+                memberId, String.valueOf(num), String.valueOf(lingQueRedis.ttl)
             );
             return result != null ? Long.parseLong(result.toString()) : 0L;
         });
@@ -128,34 +126,32 @@ public class HashOpt extends BaseOpt{
 
     /**
      * 自增哈希的值 +1 并更新过期时间
-     * @param memberId 成员ID
-     * @return 增加后的值
      */
     public Long incrHashValue(String memberId) {
         return incrHashValue(memberId, 1L);
     }
 
-    // 以下是查询方法，不需要更新过期时间
-
     /**
      * 获取哈希缓存
      */
     public <T> T getValue(String member, Class<T> targetClass) {
-        return (T)lingQueRedis.execBase((jedis) -> {
-            String val = jedis.hget(lingQueRedis.key, member);
+        return (T) lingQueRedis.execBase((commands) -> {
+            String val = commands.hget(lingQueRedis.key, member);
             if (LQUtil.isEmpty(val)) {
                 return null;
             }
-            return LQUtil.isBaseValue(targetClass) ? LQUtil.baseClassTran(member, targetClass) : JSONUtil.toBean(val, targetClass);
+            return LQUtil.isBasClass(targetClass) ?
+                LQUtil.baseClassTran(val, targetClass) : 
+                JSONUtil.toBean(val, targetClass);
         });
     }
 
     /**
      * 获取哈希缓存返回list数据
      */
-    public <T> List<T> getFieldValueToList(String member, Class<T> targetClass) {
-        return (List<T>)lingQueRedis.execBase((jedis) -> {
-            String val = jedis.hget(lingQueRedis.key, member);
+    public <T> List<T> getListValue(String member, Class<T> targetClass) {
+        return (List<T>) lingQueRedis.execBase((commands) -> {
+            String val = commands.hget(lingQueRedis.key, member);
             if (LQUtil.isEmpty(val)) {
                 return null;
             }
@@ -167,9 +163,9 @@ public class HashOpt extends BaseOpt{
      * 获取哈希的属性个数
      */
     public int count() {
-        return (int)lingQueRedis.execBase((jedis) -> {
-            Long value = jedis.hlen(lingQueRedis.key);
-            return null == value ? 0 : value.intValue();
+        return (int) lingQueRedis.execBase((commands) -> {
+            Long value = commands.hlen(lingQueRedis.key);
+            return value != null ? value.intValue() : 0;
         });
     }
 
@@ -177,23 +173,108 @@ public class HashOpt extends BaseOpt{
      * 是否有指定的键
      */
     public Boolean isExist(String memberId) {
-        return (Boolean)lingQueRedis.execBase((jedis) -> {
-            return jedis.hexists(lingQueRedis.key, memberId);
-        });
+        return (Boolean) lingQueRedis.execBase((commands) -> 
+            commands.hexists(lingQueRedis.key, memberId));
     }
 
     /**
      * 列出哈希的键值对
      */
     public <T> Map<String, T> entriesHashValue(Class<T> targetClass) {
-        return (Map<String, T>)lingQueRedis.execBase((jedis) -> {
+        return (Map<String, T>) lingQueRedis.execBase((commands) -> {
+            Map<String, String> entries = commands.hgetall(lingQueRedis.key);
             Map<String, T> resultMap = new HashMap<>();
-            Map<String, String> entries = jedis.hgetAll(lingQueRedis.key);
             entries.forEach((k, v) -> {
-                T value = LQUtil.isBaseValue(targetClass) ? LQUtil.baseClassTran(v, targetClass) : JSONUtil.toBean(v, targetClass);
+                T value = LQUtil.isBasClass(targetClass) ?
+                    LQUtil.baseClassTran(v, targetClass) : 
+                    JSONUtil.toBean(v, targetClass);
                 resultMap.put(k, value);
             });
             return resultMap;
         });
+    }
+
+    /**
+     * 设置哈希缓存
+     */
+    public void setValue(String member, Object value) {
+        lingQueRedis.execBase((commands) -> {
+            commands.hset(lingQueRedis.key, member, 
+                LQUtil.isBaseValue(value) ? value.toString() : JSONUtil.toJsonStr(value));
+            if (lingQueRedis.ttl > 0) {
+                commands.expire(lingQueRedis.key, lingQueRedis.ttl);
+            }
+            return null;
+        });
+    }
+
+    /**
+     * 删除哈希缓存
+     */
+    public void delValue(String member) {
+        lingQueRedis.execBase((commands) -> {
+            commands.hdel(lingQueRedis.key, member);
+            if (lingQueRedis.ttl > 0) {
+                commands.expire(lingQueRedis.key, lingQueRedis.ttl);
+            }
+            return null;
+        });
+    }
+
+    /**
+     * 获取所有哈希缓存
+     */
+    public <T> Map<String, T> getAllValue(Class<T> targetClass) {
+        return (Map<String, T>) lingQueRedis.execBase((commands) -> {
+            Map<String, String> map = commands.hgetall(lingQueRedis.key);
+            if (map == null || map.isEmpty()) {
+                return null;
+            }
+            return map.entrySet().stream()
+                .collect(Collectors.toMap(
+                    Map.Entry::getKey,
+                    e -> LQUtil.isBasClass(targetClass) ?
+                        LQUtil.baseClassTran(e.getValue(), targetClass) : 
+                        JSONUtil.toBean(e.getValue(), targetClass)
+                ));
+        });
+    }
+
+    /**
+     * 获取所有哈希缓存的值
+     */
+    public <T> List<T> getAllValues(Class<T> targetClass) {
+        return (List<T>) lingQueRedis.execBase((commands) -> {
+            List<String> values = commands.hvals(lingQueRedis.key);
+            if (values == null || values.isEmpty()) {
+                return null;
+            }
+            return values.stream()
+                .map(val -> LQUtil.isBasClass(targetClass) ?
+                    LQUtil.baseClassTran(val, targetClass) : 
+                    JSONUtil.toBean(val, targetClass))
+                .collect(Collectors.toList());
+        });
+    }
+
+    /**
+     * 获取所有哈希缓存的键
+     */
+    public List<String> getAllKeys() {
+        return (List<String>) lingQueRedis.execBase((commands) -> commands.hkeys(lingQueRedis.key));
+    }
+
+    /**
+     * 判断哈希缓存是否存在
+     */
+    public boolean exists(String member) {
+        return (boolean) lingQueRedis.execBase((commands) -> commands.hexists(lingQueRedis.key, member));
+    }
+
+    /**
+     * 获取哈希缓存的长度
+     */
+    public long size() {
+        return (long) lingQueRedis.execBase((commands) -> commands.hlen(lingQueRedis.key));
     }
 }

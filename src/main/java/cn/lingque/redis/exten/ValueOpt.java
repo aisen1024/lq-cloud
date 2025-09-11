@@ -3,19 +3,41 @@ package cn.lingque.redis.exten;
 import cn.hutool.json.JSONUtil;
 import cn.lingque.redis.LingQueRedis;
 import cn.lingque.util.LQUtil;
-import lombok.AllArgsConstructor;
+import io.lettuce.core.ScriptOutputType;
 import lombok.Data;
 
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
-import java.util.Arrays;
-import redis.clients.jedis.Jedis;
 
 @Data
-public class ValueOpt extends BaseOpt{
+public class ValueOpt extends BaseOpt {
     private LingQueRedis lingQueRedis;
+
+    private static final String SETNX_AND_EXPIRE_SCRIPT = 
+        "local result = redis.call('SETNX', KEYS[1], ARGV[1]); " +
+        "if result == 1 then " +
+        "    redis.call('EXPIRE', KEYS[1], ARGV[2]); " +
+        "end; " +
+        "return result;";
+
+    private static final String SET_AND_EXPIRE_SCRIPT =
+        "redis.call('SET', KEYS[1], ARGV[1]); " +
+        "redis.call('EXPIRE', KEYS[1], ARGV[2]); " +
+        "return 1;";
+
+    private static final String INCR_AND_EXPIRE_SCRIPT =
+        "local value = redis.call('INCRBY', KEYS[1], ARGV[1]); " +
+        "redis.call('EXPIRE', KEYS[1], ARGV[2]); " +
+        "return value;";
+
+    private static final String INCR_IF_EXIST_SCRIPT =
+        "if redis.call('EXISTS', KEYS[1]) == 1 then " +
+        "    local value = redis.call('INCRBY', KEYS[1], ARGV[1]); " +
+        "    redis.call('EXPIRE', KEYS[1], ARGV[2]); " +
+        "    return value; " +
+        "end; " +
+        "return nil;";
 
     public ValueOpt(LingQueRedis lingQueRedis) {
         this.lingQueRedis = lingQueRedis;
@@ -25,25 +47,17 @@ public class ValueOpt extends BaseOpt{
 
     /**
      * 设置缓存，不存在时设置
-     *
-     * @param value 值
+     * @param value 要设置的值
+     * @return 是否设置成功
      */
     public boolean setNx(Object value) {
-        String luaScript = 
-            "local result = redis.call('SETNX', KEYS[1], ARGV[1])\n" +
-            "if result == 1 and tonumber(ARGV[2]) > 0 then\n" +
-            "    redis.call('EXPIRE', KEYS[1], ARGV[2])\n" +
-            "end\n" +
-            "return result";
-
-        return (boolean)lingQueRedis.execBase((jedis) -> {
-            Object result = jedis.eval(
-                luaScript,
-                Collections.singletonList(lingQueRedis.key),
-                Arrays.asList(
-                    LQUtil.isBaseValue(value) ? value.toString() : JSONUtil.toJsonStr(value),
-                    String.valueOf(lingQueRedis.ttl)
-                )
+        return (boolean) lingQueRedis.execBase((commands) -> {
+            Object result = commands.eval(
+                SETNX_AND_EXPIRE_SCRIPT,
+                ScriptOutputType.INTEGER,
+                new String[]{lingQueRedis.key},
+                LQUtil.isBaseValue(value) ? value.toString() : JSONUtil.toJsonStr(value),
+                String.valueOf(lingQueRedis.ttl)
             );
             return result != null && Long.parseLong(result.toString()) > 0;
         });
@@ -51,24 +65,30 @@ public class ValueOpt extends BaseOpt{
 
     /**
      * 设置缓存
-     *
-     * @param value 值
+     * @param value 要设置的值
      */
     public void set(Object value) {
-        set(value,getLingQueRedis().ttl);
+        set(value, getLingQueRedis().ttl);
     }
 
     /**
      * 设置缓存
-     *
-     * @param value 值
+     * @param value 要设置的值
+     * @param ttl 过期时间（秒）
      */
-    public void set(Object value,long ttl) {
-        lingQueRedis.execBaseWithRetry((jedis) -> {
-            if (ttl == -1L) {
-                jedis.set(lingQueRedis.key, LQUtil.isBaseValue(value) ? value.toString() : JSONUtil.toJsonStr(value));
+    public void set(Object value, long ttl) {
+        lingQueRedis.execBase((commands) -> {
+            String strValue = LQUtil.isBaseValue(value) ? value.toString() : JSONUtil.toJsonStr(value);
+            if (ttl > 0) {
+                commands.eval(
+                    SET_AND_EXPIRE_SCRIPT,
+                    ScriptOutputType.INTEGER,
+                    new String[]{lingQueRedis.key},
+                    strValue,
+                    String.valueOf(ttl)
+                );
             } else {
-                jedis.setex(lingQueRedis.key, ttl, LQUtil.isBaseValue(value) ? value.toString() : JSONUtil.toJsonStr(value));
+                commands.set(lingQueRedis.key, strValue);
             }
             return null;
         });
@@ -78,7 +98,7 @@ public class ValueOpt extends BaseOpt{
      * 设置空缓存
      */
     public void setNull() {
-        set(lingQueRedis.NULL_VALUE);
+        set(NULL_VALUE);
     }
 
     /**
@@ -86,7 +106,7 @@ public class ValueOpt extends BaseOpt{
      * @return 自增后的值
      */
     public long incr() {
-        return incr(1);
+        return incr(1L);
     }
 
     /**
@@ -95,184 +115,98 @@ public class ValueOpt extends BaseOpt{
      * @return 自增后的值
      */
     public long incr(long num) {
-        String luaScript = 
-            "local value = redis.call('INCRBY', KEYS[1], ARGV[1])\n" +
-            "if value then\n" +
-            "    redis.call('EXPIRE', KEYS[1], ARGV[2])\n" +
-            "end\n" +
-            "return value";
-
-        return (long)lingQueRedis.execBase((jedis) -> {
-            Object result = jedis.eval(
-                luaScript,
-                Collections.singletonList(lingQueRedis.key),
-                Arrays.asList(
-                    String.valueOf(num),
-                    String.valueOf(lingQueRedis.ttl)
-                )
+        return (long) lingQueRedis.execBase((commands) -> {
+            Object result = commands.eval(
+                INCR_AND_EXPIRE_SCRIPT,
+                ScriptOutputType.INTEGER,
+                new String[]{lingQueRedis.key},
+                String.valueOf(num),
+                String.valueOf(lingQueRedis.ttl)
             );
-            return result != null ? Long.parseLong(result.toString()) : 0;
+            return result != null ? Long.parseLong(result.toString()) : 0L;
         });
     }
 
     /**
      * 如果存在则自增
-     * @return 自增成功则返回对应的数，key不存在则返回-1
+     * @return 自增后的值，如果key不存在则返回null
      */
-    public long incrIfExist() {
+    public Long incrIfExist() {
         return incrIfExist(1L);
     }
 
     /**
      * 如果存在则自增指定值
-     * @param num 自增数
-     * @return 自增成功则返回对应的数，key不存在则返回-1
+     * @param num 增加的值
+     * @return 自增后的值，如果key不存在则返回null
      */
-    public long incrIfExist(Long num) {
-        String luaScript = 
-            "if redis.call('EXISTS', KEYS[1]) == 1 then\n" +
-            "    local value = redis.call('INCRBY', KEYS[1], ARGV[1])\n" +
-            "    redis.call('EXPIRE', KEYS[1], ARGV[2])\n" +
-            "    return value\n" +
-            "else\n" +
-            "    return -1\n" +
-            "end";
-
-        return (long)lingQueRedis.execBase((jedis) -> {
-            Object result = jedis.eval(
-                luaScript,
-                Collections.singletonList(lingQueRedis.key),
-                Arrays.asList(
-                    String.valueOf(num),
-                    String.valueOf(lingQueRedis.ttl)
-                )
+    public Long incrIfExist(Long num) {
+        return (Long) lingQueRedis.execBase((commands) -> {
+            Object result = commands.eval(
+                INCR_IF_EXIST_SCRIPT,
+                ScriptOutputType.INTEGER,
+                new String[]{lingQueRedis.key},
+                String.valueOf(num),
+                String.valueOf(lingQueRedis.ttl)
             );
-            return result != null ? Long.parseLong(result.toString()) : -1;
+            return result != null ? Long.parseLong(result.toString()) : null;
         });
     }
 
     /**
-     * 自减,默认-1
-     * @return 自减后的值
+     * 获取字符串值
+     * @return 字符串值
      */
-    public long decr() {
-        return decr(1L);
+    public String get() {
+        return (String) lingQueRedis.execBase((commands) -> commands.get(lingQueRedis.key));
     }
 
     /**
-     * 自减指定值并更新过期时间
-     * @param num 自减数（必须为正整数）
-     * @return 自减后的值
+     * 获取值并转换为指定类型
+     * @param targetClass 目标类型
+     * @return 转换后的值
      */
-    public long decr(Long num) {
-        if (num < 0) {
-            throw new RuntimeException("num 必须为正整数！");
-        }
-
-        String luaScript = 
-            "local value = redis.call('DECRBY', KEYS[1], ARGV[1])\n" +
-            "if value then\n" +
-            "    redis.call('EXPIRE', KEYS[1], ARGV[2])\n" +
-            "end\n" +
-            "return value";
-
-        return (long)lingQueRedis.execBase((jedis) -> {
-            Object result = jedis.eval(
-                luaScript,
-                Collections.singletonList(lingQueRedis.key),
-                Arrays.asList(
-                    String.valueOf(num),
-                    String.valueOf(lingQueRedis.ttl)
-                )
-            );
-            return result != null ? Long.parseLong(result.toString()) : 0;
-        });
-    }
-
-    /**
-     * 如果存在则自减
-     * @return 自减成功则返回对应的数，key不存在则返回-1
-     */
-    public Long decrIfExist() {
-        return decrIfExist(1L);
-    }
-
-    /**
-     * 如果存在则自减指定值
-     * @param num 自减数
-     * @return 自减成功则返回对应的数，key不存在则返回-1
-     */
-    public Long decrIfExist(Long num) {
-        String luaScript = 
-            "if redis.call('EXISTS', KEYS[1]) == 1 then\n" +
-            "    local value = redis.call('DECRBY', KEYS[1], ARGV[1])\n" +
-            "    redis.call('EXPIRE', KEYS[1], ARGV[2])\n" +
-            "    return value\n" +
-            "else\n" +
-            "    return -1\n" +
-            "end";
-
-        return (long)lingQueRedis.execBase((jedis) -> {
-            Object result = jedis.eval(
-                    luaScript,
-                    Collections.singletonList(lingQueRedis.key),
-                    Arrays.asList(
-                            String.valueOf(num),
-                            String.valueOf(lingQueRedis.ttl)
-                    )
-            );
-            return result != null ? Long.parseLong(result.toString()) : -1;
-        });
-    }
-
-    /**
-     * 获取缓存的值,支持基础类型和对象bean
-     *
-     * @param targetClass 需要转换的类型
-     * @param <T>         返回值的类型
-     * @return 缓存值
-     */
-    public <T> T getValue(Class<T> targetClass) {
-        return (T)lingQueRedis.execBaseWithRetry((jedis) -> {
-            String obj = jedis.get(lingQueRedis.key);
-            if (lingQueRedis.isNullCache(obj)) {
+    public <T> T get(Class<T> targetClass) {
+        return (T) lingQueRedis.execBase((commands) -> {
+            String val = commands.get(lingQueRedis.key);
+            if (LQUtil.isEmpty(val)) {
                 return null;
             }
-            if (null != obj) {
-                if (LQUtil.isBasClass(targetClass)) {
-                    return (T) LQUtil.baseClassTran(obj, targetClass);
-                }
-                return LQUtil.jsonToBean(obj.toString(), targetClass);
+            if (isNullCache(val)) {
+                return null;
             }
-            return null;
+            return LQUtil.isBasClass(targetClass) ?
+                LQUtil.baseClassTran(val, targetClass) : 
+                JSONUtil.toBean(val, targetClass);
         });
     }
 
     /**
-     * 获取缓存的值,支持基础类型和对象bean，空返回默认值
-     * @param targetClass
-     * @param defaultValue
-     * @return
-     * @param <T>
+     * 获取值并转换为List类型
+     * @param targetClass List元素的类型
+     * @return 转换后的List
      */
-    public <T> T getValue(Class<T> targetClass,T defaultValue) {
-        T value = getValue(targetClass);
-        return null == value ? defaultValue : value;
+    public <T> List<T> getList(Class<T> targetClass) {
+        return (List<T>) lingQueRedis.execBase((commands) -> {
+            String val = commands.get(lingQueRedis.key);
+            if (LQUtil.isEmpty(val)) {
+                return null;
+            }
+            if (isNullCache(val)) {
+                return null;
+            }
+            return JSONUtil.toList(val, targetClass);
+        });
     }
 
     /**
-     * 获取集合对象
-     *
-     * @param targetClass
-     * @return
+     * 删除key
+     * @return 是否删除成功
      */
-    public <T> List<T> getListValue(Class<T> targetClass) {
-        String json = getValue(String.class);
-        if (LQUtil.isNotEmpty(json)) {
-            return JSONUtil.toList(json, targetClass);
-        }
-        //防止直接操作list出现异常，正常new一个集合
-        return new ArrayList<>();
+    @Override
+    public boolean delete() {
+        return (boolean) lingQueRedis.execBase((commands) -> 
+            commands.del(lingQueRedis.key) > 0);
     }
 
     /**--------------------------------------------高级函授编程---------------------------------------*/
@@ -280,107 +214,59 @@ public class ValueOpt extends BaseOpt{
 
     /**
      * 获取缓存对象
-     *
-     * @param function    查询mysql的函数
-     * @param targetClass 返回目标对象的class
-     * @param isSetNull   是否空的时候插入空对象，防止缓存穿透
-     * @param <S>
-     * @return
      */
     public <S> S execBeanPlus(Class<S> targetClass, Boolean isSetNull, Supplier<S> function) {
-        Object value = getValue(targetClass);
-        if (getLingQueRedis().isNullCache(value)) {
-            return null;
-        }
+        S value = get(targetClass);
         if (null == value) {
-            S s = function.get();
-            if (null != s) {
-                set(s);
+            value = function.get();
+            if (null != value) {
+                final S finalValue = value;
+                set(finalValue);
             } else if (isSetNull) {
                 setNull();
             }
-            return s;
         }
-        return targetClass == String.class ? (S) value.toString() : LQUtil.jsonToBean(value.toString(), targetClass);
+        return value;
     }
 
-
     /**
-     * 集合对象
-     *
-     * @param targetClass
-     * @return
+     * 获取缓存列表
      */
     public <T> List<T> execListPlus(Class<T> targetClass, Boolean isSetNull, Supplier<List<T>> function) {
-        Object result = getValue(targetClass);
-        if (getLingQueRedis().isNullCache(result)) {
-            return Collections.emptyList();
-        }
-        if (null == result) {
-            List<T> tl = function.get();
-            if (null != tl) {
-               set(JSONUtil.toJsonStr(tl));
+        List<T> value = getList(targetClass);
+        if (null == value) {
+            value = function.get();
+            if (null != value) {
+                final List<T> finalValue = value;
+                set(finalValue);
             } else if (isSetNull) {
-               setNull();
+                setNull();
             }
-            return tl;
         }
-        return JSONUtil.toList(result.toString(), targetClass);
+        return value;
     }
 
     /**
      * 延迟加载
-     * @param targetClass
-     * @param isSetNull
-     * @param function
-     * @return
      */
     public <T> List<T> execListPlusLazyLoad(Class<T> targetClass, Boolean isSetNull, Supplier<List<T>> function) {
-        Object result = getValue(String.class);
-        if (getLingQueRedis().isNullCache(result)) {
-            return Collections.emptyList();
-        }
-        if (null == result) {
-            List<T> tl = function.get();
-            if (null != tl) {
-                if (lingQueRedis.ttl > 0) {
-                    set(new CacheBean(lingQueRedis.ttl, tl), lingQueRedis.ttl * 2);
-                } else {
-                    set(JSONUtil.toJsonStr(new CacheBean(lingQueRedis.ttl, tl)));
-                }
+        List<T> value = getList(targetClass);
+        if (null == value) {
+            value = function.get();
+            if (null != value) {
+                final List<T> finalValue = value;
+                lingQueRedis.execBase((commands) -> {
+                    commands.set(lingQueRedis.key, JSONUtil.toJsonStr(finalValue));
+                    if (lingQueRedis.ttl > 0) {
+                        commands.expire(lingQueRedis.key, lingQueRedis.ttl);
+                    }
+                    return null;
+                });
             } else if (isSetNull) {
                 setNull();
             }
-            return tl;
         }
-        CacheBean cacheBean = JSONUtil.toBean(result.toString(), CacheBean.class);
-        //过时了，试着去更新
-        if (cacheBean.isOutTime()) {
-            try {
-                    CacheBean updateBean = (CacheBean) getLingQueRedis().ofLock().<CacheBean>lockFuture(() -> {
-                    List<T> tl = function.get();
-                    CacheBean cache = new CacheBean(getLingQueRedis().ttl, tl);
-                    if (null != tl) {
-                        if (getLingQueRedis().ttl > 0) {
-                            set(JSONUtil.toJsonStr(cache), getLingQueRedis().ttl * 2);
-                        } else {
-                            set(JSONUtil.toJsonStr(cache));
-                        }
-                        return cache;
-                    } else if (isSetNull) {
-                        setNull();
-                    }
-                    return cache;
-                });
-                if (null != updateBean) {
-                    cacheBean = updateBean;
-                }
-            } catch (Exception e) {
-                //nothing to do
-            }
-        }
-
-        return JSONUtil.toList(JSONUtil.toJsonStr(cacheBean.getData()), targetClass);
+        return value;
     }
 
     /**

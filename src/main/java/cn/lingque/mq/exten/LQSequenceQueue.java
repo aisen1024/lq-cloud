@@ -34,7 +34,7 @@ public class LQSequenceQueue<T> implements  IMQConsumer<ILQMessage<T>,T>{
      * @param message
      */
     public long pushMessageInsertBefore(Object message){
-       return redis.ofList().rightPush(LQUtil.isBaseValue(message) ? message.toString() : JSONUtil.toJsonStr(message));
+       return redis.ofList().rpush(LQUtil.isBaseValue(message) ? message.toString() : JSONUtil.toJsonStr(message));
     }
 
 
@@ -43,7 +43,7 @@ public class LQSequenceQueue<T> implements  IMQConsumer<ILQMessage<T>,T>{
      * @param message
      */
     public long pushMessageInsertAfter(Object message){
-        return redis.ofList().leftPush(LQUtil.isBaseValue(message) ? message.toString() : JSONUtil.toJsonStr(message));
+        return redis.ofList().lpush(LQUtil.isBaseValue(message) ? message.toString() : JSONUtil.toJsonStr(message));
     }
 
     /**
@@ -79,7 +79,7 @@ public class LQSequenceQueue<T> implements  IMQConsumer<ILQMessage<T>,T>{
      */
     @Override
     public void consumer(List<ILQMessage<T>> handle) {
-        List<String> messages = redis.ofList().rpops(1);
+        List<String> messages = redis.ofList().rpop(1);
         if (!messages.isEmpty()) {
             messages.forEach(m -> {
                 handle.forEach(h->{

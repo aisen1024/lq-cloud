@@ -57,6 +57,9 @@ public class LQKey<T> {
         return LQRKey;
     }
 
+    public LockOpt ofLock(Object... params){
+        return new LockOpt(rd(params));
+    }
     public ValueOpt ofV(Object... params) {
         return new ValueOpt(rd(params));
     }

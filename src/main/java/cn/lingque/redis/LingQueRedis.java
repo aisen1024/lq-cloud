@@ -5,9 +5,8 @@ import cn.lingque.mq.exten.LQSequenceQueue;
 import cn.lingque.mq.exten.LQUniqueQueue;
 import cn.lingque.redis.exten.*;
 import cn.lingque.scene.LQScene;
+import io.lettuce.core.api.sync.RedisCommands;
 import lombok.extern.slf4j.Slf4j;
-import redis.clients.jedis.*;
-import redis.clients.jedis.exceptions.JedisConnectionException;
 
 import java.util.function.Supplier;
 
@@ -105,8 +104,8 @@ public class LingQueRedis extends BaseOpt{
      * @param <T>
      */
     public <T>T exec(BaseExec<T> exec){
-       return JedisProxy.execBaseWithRetry((jedis)->{
-            return exec.exec(jedis,key,ttl,this);
+       return JedisProxy.execBaseWithRetry((commands)->{
+            return exec.exec(commands,key,ttl,this);
         },10);
     }
 
@@ -117,16 +116,16 @@ public class LingQueRedis extends BaseOpt{
      * @param <T>
      */
     public <T>T execWithRunner(BaseExec<T> exec){
-       return JedisProxy.execBaseWithRetry((jedis)->run(() -> exec.exec(jedis, key, ttl, this)),10);
+       return JedisProxy.execBaseWithRetry((commands)->run(() -> exec.exec(commands, key, ttl, this)),10);
     }
 
 
     public static interface BaseExec<T>{
-        <T> T exec(Jedis redis,String key,long ttl,LingQueRedis lingQueRedis);
+        <T> T exec(RedisCommands<String, String> commands, String key, long ttl, LingQueRedis lingQueRedis);
     }
 
     public static interface BaseSimpleExec{
-        Object exec(Jedis redis);
+        Object exec(RedisCommands<String, String> commands);
     }
 
     /**

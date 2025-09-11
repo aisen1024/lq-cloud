@@ -112,7 +112,7 @@ public class LQUtil<T>{
         return null == v || v.trim().equals("") || "null".equals(v.toLowerCase()) || "undefined".equals(v.toLowerCase());
     }
 
-    public static boolean isEmpty(List v){
+    public static boolean isEmpty(Collection v){
         return null == v || v.isEmpty();
     }
 
@@ -131,7 +131,7 @@ public class LQUtil<T>{
 
 
 
-    public static boolean isNotEmpty(List v){
+    public static boolean isNotEmpty(Collection v){
         return null != v && !v.isEmpty();
     }
 

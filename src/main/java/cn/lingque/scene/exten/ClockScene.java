@@ -22,7 +22,7 @@ public class ClockScene<T> {
      * @return true-是， false-否
      */
     public boolean isFullBit() {
-        String bitArray = (String) redis.ofValue().getValue(String.class);
+        String bitArray = (String) redis.ofValue().get(String.class);
         return LQUtil.isNotEmpty(bitArray) && bitArray.indexOf("0") < 0;
     }
 
@@ -42,7 +42,7 @@ public class ClockScene<T> {
      * @param day
      */
     public void ifNullCreateClock(int day) {
-        String bitArray = (String) redis.ofValue().getValue(String.class);
+        String bitArray = (String) redis.ofValue().get(String.class);
         if (LQUtil.isEmpty(bitArray)) {
             //bit长度
             redis.ofValue().setNx(initBit(day));
@@ -95,7 +95,7 @@ public class ClockScene<T> {
             return;
         }
 
-        String bitArray = (String) redis.ofValue().getValue(String.class);
+        String bitArray = (String) redis.ofValue().get(String.class);
         if (LQUtil.isEmpty(bitArray)) {
             throw new RuntimeException("bit数组不存在，请使用ifNullCreateBit创建！");
         }
@@ -118,7 +118,7 @@ public class ClockScene<T> {
      * @return
      */
     public Integer getBitFullLen() {
-        String bitArray = (String) redis.ofValue().getValue(String.class);
+        String bitArray = (String) redis.ofValue().get(String.class);
         if (LQUtil.isEmpty(bitArray)) {
             return 0;
         }

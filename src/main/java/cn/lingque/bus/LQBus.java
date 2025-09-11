@@ -45,7 +45,7 @@ public class LQBus {
                 }
                 LQBusMessageBean messageBean = new LQBusMessageBean(topic,msg);
                 //根据渠道分发到各个节点
-                LQ_BUS_MESSAGE_CHANNEL.rd(node.getServerName()).ofSet().add(messageBean);
+                LQ_BUS_MESSAGE_CHANNEL.rd(node.getServerName()).ofSet().addMember(messageBean);
             }
         }
     }
@@ -65,7 +65,7 @@ public class LQBus {
                     }
                     TryCatch.trying(()-> {
                         for (String sv : LQBus.serverName) {
-                            List<LQBusMessageBean> list = LQ_BUS_MESSAGE_CHANNEL.ofS(sv).pops(10, LQBusMessageBean.class);
+                            Set<LQBusMessageBean> list = LQ_BUS_MESSAGE_CHANNEL.ofS(sv).popMembers(10, LQBusMessageBean.class);
                             if (!list.isEmpty()) {
                                 hasMessage.set(true);
                                 list.forEach(msg -> {
@@ -116,7 +116,7 @@ public class LQBus {
                 }
                 LQBusMessageBean messageBean = new LQBusMessageBean(topic,msg);
                 //根据渠道分发到各个节点
-                LQ_BUS_MESSAGE_CHANNEL.rd(node.getServerName()).ofSet().add(messageBean);
+                LQ_BUS_MESSAGE_CHANNEL.rd(node.getServerName()).ofSet().addMember(messageBean);
             }
         }
     }

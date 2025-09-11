@@ -2,7 +2,6 @@ package cn.lingque.config;
 
 import cn.lingque.cloud.config.LQConfigCenterProperties;
 import cn.lingque.cloud.node.ServerConfig;
-import cn.lingque.console.config.LqConsoleConfig;
 import lombok.Data;
 import lombok.experimental.Accessors;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -66,8 +65,6 @@ public class LQProperties {
     private RedisPlusBusProperties bus = new RedisPlusBusProperties();
     //-------------------------------------配置中心-------------------------------------------//
 
-    /**控制台*/
-    private LqConsoleConfig console = new LqConsoleConfig();
     /**服务节点信息*/
     private ServerConfig server = new ServerConfig();
     /**配置中心*/
