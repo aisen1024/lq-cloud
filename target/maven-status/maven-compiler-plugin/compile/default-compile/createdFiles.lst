@@ -1,0 +1,6 @@
+cn/lingque/redis/exten/SortedSetOpt.class
+cn/lingque/runner/config/LqMQListenerConfiguration$2.class
+cn/lingque/redis/exten/SetOpt.class
+cn/lingque/redis/exten/GeoOpt.class
+cn/lingque/redis/exten/HashOpt.class
+cn/lingque/redis/exten/ListOpt.class

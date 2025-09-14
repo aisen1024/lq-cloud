@@ -83,6 +83,12 @@ public class LqMQListenerConfiguration implements BeanPostProcessor, Application
             case UNIQUE:
                 LQMQConsumer.register(key, redis.ofUniqueQueue(), messageHandler);
                 break;
+            case UNIFIED:
+                LQMQConsumer.register(key, redis.ofUnifiedQueue(), messageHandler);
+                break;
+            case STREAM_UNIFIED:
+                LQMQConsumer.register(key, redis.ofStreamUnifiedQueue(), messageHandler);
+               break;
         }
 
         log.info("Registered MQ listener for key: {}, type: {}, method: {}", 

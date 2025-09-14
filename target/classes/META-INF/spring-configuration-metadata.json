@@ -1,0 +1,201 @@
+{
+  "groups": [
+    {
+      "name": "ling-que",
+      "type": "cn.lingque.config.LQProperties",
+      "sourceType": "cn.lingque.config.LQProperties"
+    },
+    {
+      "name": "ling-que.bus",
+      "type": "cn.lingque.config.LQProperties$RedisPlusBusProperties",
+      "sourceType": "cn.lingque.config.LQProperties",
+      "sourceMethod": "public cn.lingque.config.LQProperties.RedisPlusBusProperties getBus() "
+    },
+    {
+      "name": "ling-que.cluster",
+      "type": "cn.lingque.config.LQProperties$ClusterProperties",
+      "sourceType": "cn.lingque.config.LQProperties",
+      "sourceMethod": "public cn.lingque.config.LQProperties.ClusterProperties getCluster() "
+    },
+    {
+      "name": "ling-que.config",
+      "type": "cn.lingque.cloud.config.LQConfigCenterProperties",
+      "sourceType": "cn.lingque.cloud.config.LQConfigCenterProperties"
+    },
+    {
+      "name": "ling-que.node",
+      "type": "cn.lingque.cloud.node.ServerConfig",
+      "sourceType": "cn.lingque.cloud.node.ServerConfig"
+    },
+    {
+      "name": "ling-que.sentinel",
+      "type": "cn.lingque.config.LQProperties$SentinelProperties",
+      "sourceType": "cn.lingque.config.LQProperties",
+      "sourceMethod": "public cn.lingque.config.LQProperties.SentinelProperties getSentinel() "
+    }
+  ],
+  "properties": [
+    {
+      "name": "ling-que.bus.enable",
+      "type": "java.lang.Boolean",
+      "description": "是否开启消息总线，默认开启",
+      "sourceType": "cn.lingque.config.LQProperties$RedisPlusBusProperties"
+    },
+    {
+      "name": "ling-que.bus.server-name",
+      "type": "java.lang.String",
+      "description": "服务名称",
+      "sourceType": "cn.lingque.config.LQProperties$RedisPlusBusProperties"
+    },
+    {
+      "name": "ling-que.cluster.cluster-nodes",
+      "type": "java.util.List<java.lang.String>",
+      "description": "集群地址",
+      "sourceType": "cn.lingque.config.LQProperties$ClusterProperties"
+    },
+    {
+      "name": "ling-que.cluster.user",
+      "type": "java.lang.String",
+      "description": "主节点",
+      "sourceType": "cn.lingque.config.LQProperties$ClusterProperties"
+    },
+    {
+      "name": "ling-que.config",
+      "type": "cn.lingque.cloud.config.LQConfigCenterProperties",
+      "description": "配置中心",
+      "sourceType": "cn.lingque.config.LQProperties"
+    },
+    {
+      "name": "ling-que.config.data-ids",
+      "type": "java.util.List<cn.lingque.cloud.config.DataId>",
+      "description": "文件ids",
+      "sourceType": "cn.lingque.cloud.config.LQConfigCenterProperties"
+    },
+    {
+      "name": "ling-que.db",
+      "type": "java.lang.Integer",
+      "description": "redis的数据库，默认0",
+      "sourceType": "cn.lingque.config.LQProperties"
+    },
+    {
+      "name": "ling-que.ip",
+      "type": "java.lang.String",
+      "description": "redis的IP地址",
+      "sourceType": "cn.lingque.config.LQProperties"
+    },
+    {
+      "name": "ling-que.master-pool",
+      "type": "cn.lingque.config.LQThreadPoolProperties",
+      "description": "主线程池",
+      "sourceType": "cn.lingque.config.LQProperties"
+    },
+    {
+      "name": "ling-que.max-idle",
+      "type": "java.lang.Integer",
+      "description": "redis最大空闲连接数 参考 lettuce 默认值：最大空闲连接数设为8",
+      "sourceType": "cn.lingque.config.LQProperties"
+    },
+    {
+      "name": "ling-que.max-total",
+      "type": "java.lang.Integer",
+      "description": "redis最大连接数 参考 lettuce 默认值：最大连接数设为8",
+      "sourceType": "cn.lingque.config.LQProperties"
+    },
+    {
+      "name": "ling-que.max-wait-millis",
+      "type": "java.lang.Long",
+      "description": "redis最大等待时间 参考 lettuce 默认值：设置为-1表示无限等待",
+      "sourceType": "cn.lingque.config.LQProperties"
+    },
+    {
+      "name": "ling-que.min-evictable-idle-time-millis",
+      "type": "java.lang.Integer",
+      "sourceType": "cn.lingque.config.LQProperties"
+    },
+    {
+      "name": "ling-que.min-idle",
+      "type": "java.lang.Integer",
+      "description": "redis最小空闲连接数 参考 lettuce 默认值：最小空闲连接数设为0",
+      "sourceType": "cn.lingque.config.LQProperties"
+    },
+    {
+      "name": "ling-que.mode",
+      "type": "java.lang.String",
+      "description": "模式：standalone单机 cluster集群 sentinel哨兵，默认单机",
+      "sourceType": "cn.lingque.config.LQProperties"
+    },
+    {
+      "name": "ling-que.node.server-host",
+      "type": "java.lang.String",
+      "description": "全局微服务注册IP",
+      "sourceType": "cn.lingque.cloud.node.ServerConfig"
+    },
+    {
+      "name": "ling-que.node.server-name",
+      "type": "java.lang.String",
+      "description": "全局的微服务名称",
+      "sourceType": "cn.lingque.cloud.node.ServerConfig"
+    },
+    {
+      "name": "ling-que.node.server-port",
+      "type": "java.lang.Integer",
+      "description": "全局微服务注册端口",
+      "sourceType": "cn.lingque.cloud.node.ServerConfig"
+    },
+    {
+      "name": "ling-que.password",
+      "type": "java.lang.String",
+      "description": "redis的数据库连接密码，默认为空",
+      "sourceType": "cn.lingque.config.LQProperties"
+    },
+    {
+      "name": "ling-que.port",
+      "type": "java.lang.String",
+      "description": "redis的端口地址",
+      "sourceType": "cn.lingque.config.LQProperties"
+    },
+    {
+      "name": "ling-que.sentinel.master",
+      "type": "java.lang.String",
+      "description": "哨兵主节点",
+      "sourceType": "cn.lingque.config.LQProperties$SentinelProperties"
+    },
+    {
+      "name": "ling-que.sentinel.sentinel-nodes",
+      "type": "java.util.List<java.lang.String>",
+      "description": "哨兵节点地址",
+      "sourceType": "cn.lingque.config.LQProperties$SentinelProperties"
+    },
+    {
+      "name": "ling-que.server",
+      "type": "cn.lingque.cloud.node.ServerConfig",
+      "description": "服务节点信息",
+      "sourceType": "cn.lingque.config.LQProperties"
+    },
+    {
+      "name": "ling-que.slave-pool",
+      "type": "cn.lingque.config.LQThreadPoolProperties",
+      "description": "辅助线程池",
+      "sourceType": "cn.lingque.config.LQProperties"
+    },
+    {
+      "name": "ling-que.time-between-eviction-runs",
+      "type": "java.lang.Integer",
+      "description": "空闲连接检查间隔时间",
+      "sourceType": "cn.lingque.config.LQProperties"
+    },
+    {
+      "name": "ling-que.timeout",
+      "type": "java.lang.Integer",
+      "description": "redis连接超时时间 参考 spring-boot-redis 默认值：设置为2000毫秒",
+      "sourceType": "cn.lingque.config.LQProperties"
+    },
+    {
+      "name": "ling-que.username",
+      "type": "java.lang.String",
+      "description": "redis的数据连接名",
+      "sourceType": "cn.lingque.config.LQProperties"
+    }
+  ],
+  "hints": []
+}

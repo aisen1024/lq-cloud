@@ -1,8 +1,6 @@
 package cn.lingque.redis;
 import cn.lingque.base.LQKey;
-import cn.lingque.mq.exten.LQLazyQueue;
-import cn.lingque.mq.exten.LQSequenceQueue;
-import cn.lingque.mq.exten.LQUniqueQueue;
+import cn.lingque.mq.exten.*;
 import cn.lingque.redis.exten.*;
 import cn.lingque.scene.LQScene;
 import io.lettuce.core.api.sync.RedisCommands;
@@ -57,6 +55,24 @@ public class LingQueRedis extends BaseOpt{
     public LQUniqueQueue ofUniqueQueue(){
         return new LQUniqueQueue(this);
     }
+    
+    /**
+     * 获取统一消息队列实例
+     * @return 统一消息队列
+     */
+    public LQUnifiedQueue ofUnifiedQueue(){
+        return new LQUnifiedQueue(this);
+    }
+
+    /**
+     * 获取统一消息队列实例
+     * @return 统一消息队列
+     */
+    public LQStreamUnifiedQueue ofStreamUnifiedQueue(){
+        return new LQStreamUnifiedQueue<>(this);
+    }
+
+
     public LockOpt ofLock(){
         return new LockOpt(this);
     }
