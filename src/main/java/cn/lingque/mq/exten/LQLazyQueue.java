@@ -16,7 +16,9 @@ import java.util.List;
  * @author aisen
  * @date 2024/10/10
  * @desc 延迟队列
+ * @deprecated 建议使用 LQUnifiedQueue 或 LQStreamUnifiedQueue 替代，功能更强大且性能更好
  **/
+@Deprecated
 @AllArgsConstructor
 public class LQLazyQueue<T> implements IMQConsumer<ILQMessage<T>,T> {
 

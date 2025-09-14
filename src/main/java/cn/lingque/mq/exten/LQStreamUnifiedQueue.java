@@ -3,6 +3,7 @@ package cn.lingque.mq.exten;
 import cn.hutool.json.JSONUtil;
 import cn.lingque.mq.exten.itf.ILQMessage;
 import cn.lingque.mq.exten.itf.IMQConsumer;
+import cn.lingque.mq.LQDelayQueueManager;
 import cn.lingque.redis.LingQueRedis;
 import cn.lingque.thread.LQThreadUtil;
 import cn.lingque.util.LQUtil;
@@ -17,6 +18,8 @@ import lombok.extern.slf4j.Slf4j;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * @author aisen
@@ -28,6 +31,12 @@ import java.util.Map;
 public class LQStreamUnifiedQueue<T> implements IMQConsumer<ILQMessage<T>, T> {
 
     private final LingQueRedis redis;
+    
+    // 存储每个队列key对应的消费者处理器
+    private static final ConcurrentHashMap<String, List<ILQMessage<Object>>> CONSUMER_HANDLERS = new ConcurrentHashMap<>();
+    
+    // 存储每个队列key对应的监听器状态
+    private static final ConcurrentHashMap<String, AtomicBoolean> LISTENER_STATUS = new ConcurrentHashMap<>();
     
     // Stream键名
     private static final String STREAM_SUFFIX = ":stream";
@@ -120,11 +129,79 @@ public class LQStreamUnifiedQueue<T> implements IMQConsumer<ILQMessage<T>, T> {
             return;
         }
         
-        // 处理延迟消息（将到期的延迟消息转移到Stream）
-        transferDelayedMessages();
+        // 注册消费者处理器
+        CONSUMER_HANDLERS.put(redis.key, (List<ILQMessage<Object>>) (List<?>) handles);
         
-        // 消费Stream中的消息
-        consumeStreamMessages(handles);
+        // 注册延迟队列处理器到统一管理器
+        LQDelayQueueManager.getInstance().registerProcessor(redis.key, () -> {
+            transferDelayedMessages();
+        });
+        
+        // 启动监听器（只启动一次）
+        startListener();
+    }
+    
+    /**
+     * 启动Stream监听器
+     */
+    private void startListener() {
+        String queueKey = redis.key;
+        AtomicBoolean isStarted = LISTENER_STATUS.computeIfAbsent(queueKey, k -> new AtomicBoolean(false));
+        
+        if (isStarted.compareAndSet(false, true)) {
+            log.info("启动Stream监听器: {}", queueKey);
+            
+            // 只启动Stream消息监听器，延迟消息由统一管理器处理
+            startStreamMessageListener(queueKey, isStarted);
+        }
+    }
+    
+    
+    /**
+     * 启动Stream消息监听器
+     */
+    private void startStreamMessageListener(String queueKey, AtomicBoolean isStarted) {
+        LQThreadUtil.execMaster(() -> {
+            log.info("启动Stream消息监听器: {}", queueKey);
+            while (isStarted.get()) {
+                try {
+                    List<ILQMessage<Object>> handles = CONSUMER_HANDLERS.get(queueKey);
+                    if (handles != null) {
+                        // 消费Stream中的消息
+                        consumeStreamMessages((List<ILQMessage<T>>) (List<?>) handles);
+                    }
+                    
+                    // Stream消息处理间隔很短，保证实时性
+                    Thread.sleep(10);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                } catch (Exception e) {
+                    log.error("处理Stream消息时发生错误: {}", queueKey, e);
+                    try {
+                        Thread.sleep(100);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
+                }
+            }
+            log.info("Stream消息监听器已停止: {}", queueKey);
+        });
+    }
+    
+    /**
+     * 停止监听器
+     */
+    public void stopListener() {
+        AtomicBoolean isStarted = LISTENER_STATUS.get(redis.key);
+        if (isStarted != null) {
+            isStarted.set(false);
+            CONSUMER_HANDLERS.remove(redis.key);
+            // 取消注册延迟队列处理器
+            LQDelayQueueManager.getInstance().unregisterProcessor(redis.key);
+            log.info("停止Stream监听器: {}", redis.key);
+        }
     }
     
     /**

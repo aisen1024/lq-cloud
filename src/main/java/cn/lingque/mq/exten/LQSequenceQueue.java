@@ -15,7 +15,9 @@ import java.util.List;
  * @author aisen
  * @date 2024/10/8
  * @desc 顺序队列
+ * @deprecated 建议使用 LQUnifiedQueue 替代，功能更强大且性能更好
  **/
+@Deprecated
 @AllArgsConstructor
 public class LQSequenceQueue<T> implements  IMQConsumer<ILQMessage<T>,T>{
 

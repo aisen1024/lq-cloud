@@ -3,26 +3,34 @@ package cn.lingque.mq.exten;
 import cn.hutool.json.JSONUtil;
 import cn.lingque.mq.exten.itf.ILQMessage;
 import cn.lingque.mq.exten.itf.IMQConsumer;
+import cn.lingque.mq.LQDelayQueueManager;
 import cn.lingque.redis.LingQueRedis;
 import cn.lingque.thread.LQThreadUtil;
 import cn.lingque.util.LQUtil;
 import cn.lingque.util.TryCatch;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * @author aisen
  * @date 2024/12/19
- * @desc 统一消息队列 - 支持瞬时和延迟消息的高性能队列
+ * @desc 统一消息队列 - 基于Redis pub/sub的高性能队列，支持瞬时和延迟消息
  **/
 @Slf4j
 @AllArgsConstructor
 public class LQUnifiedQueue<T> implements IMQConsumer<ILQMessage<T>, T> {
 
     private final LingQueRedis redis;
+    
+    // 存储每个队列key对应的消费者处理器
+    private static final ConcurrentHashMap<String, List<ILQMessage<Object>>> CONSUMER_HANDLERS = new ConcurrentHashMap<>();
+    
+    // 存储每个队列key对应的监听器状态
+    private static final ConcurrentHashMap<String, AtomicBoolean> LISTENER_STATUS = new ConcurrentHashMap<>();
     
     // Redis键名常量
     private static final String INSTANT_SUFFIX = ":instant";
@@ -116,11 +124,74 @@ public class LQUnifiedQueue<T> implements IMQConsumer<ILQMessage<T>, T> {
             return;
         }
         
-        // 处理瞬时消息
-        processInstantMessages(handles);
+        // 注册消费者处理器
+        CONSUMER_HANDLERS.put(redis.key, (List<ILQMessage<Object>>) (List<?>) handles);
         
-        // 处理延迟消息
-        processDelayMessages(handles);
+        // 注册延迟队列处理器到统一管理器
+        LQDelayQueueManager.getInstance().registerProcessor(redis.key, () -> {
+            List<ILQMessage<Object>> registeredHandles = CONSUMER_HANDLERS.get(redis.key);
+            if (registeredHandles != null) {
+                processDelayMessages((List<ILQMessage<T>>) (List<?>) registeredHandles);
+            }
+        });
+        
+        // 启动监听器（只启动一次）
+        startListener();
+    }
+    
+    /**
+     * 启动队列监听器
+     */
+    private void startListener() {
+        String queueKey = redis.key;
+        AtomicBoolean isStarted = LISTENER_STATUS.computeIfAbsent(queueKey, k -> new AtomicBoolean(false));
+        
+        if (isStarted.compareAndSet(false, true)) {
+            log.info("启动队列监听器: {}", queueKey);
+            
+            // 使用定时任务进行消息处理，比轮询更高效
+            LQThreadUtil.execMaster(() -> {
+                while (isStarted.get()) {
+                    try {
+                        List<ILQMessage<Object>> handles = CONSUMER_HANDLERS.get(queueKey);
+                        if (handles != null) {
+                            // 只处理瞬时消息，延迟消息由统一管理器处理
+                            processInstantMessages((List<ILQMessage<T>>) (List<?>) handles);
+                        }
+                        
+                        // 短暂休眠，避免过度消耗CPU（比原来的50ms轮询更短）
+                        Thread.sleep(10);
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    } catch (Exception e) {
+                        log.error("处理队列消息时发生错误: {}", queueKey, e);
+                        try {
+                            Thread.sleep(100); // 发生错误时稍长等待
+                        } catch (InterruptedException ie) {
+                            Thread.currentThread().interrupt();
+                            break;
+                        }
+                    }
+                }
+                
+                log.info("队列监听器已停止: {}", queueKey);
+            });
+        }
+    }
+    
+    /**
+     * 停止队列监听器
+     */
+    public void stopListener() {
+        AtomicBoolean isStarted = LISTENER_STATUS.get(redis.key);
+        if (isStarted != null) {
+            isStarted.set(false);
+            CONSUMER_HANDLERS.remove(redis.key);
+            // 取消注册延迟队列处理器
+            LQDelayQueueManager.getInstance().unregisterProcessor(redis.key);
+            log.info("停止队列监听器: {}", redis.key);
+        }
     }
     
     /**

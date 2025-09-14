@@ -15,7 +15,9 @@ import java.util.Set;
  * @author aisen
  * @date 2024/10/10
  * @desc 唯一队列，去重
+ * @deprecated 建议使用 LQUnifiedQueue 替代，功能更强大且性能更好
  **/
+@Deprecated
 @AllArgsConstructor
 public class LQUniqueQueue<T> implements  IMQConsumer<ILQMessage<T>,T> {
 

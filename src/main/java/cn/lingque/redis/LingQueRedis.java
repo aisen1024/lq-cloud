@@ -46,12 +46,17 @@ public class LingQueRedis extends BaseOpt{
         return new LQScene(this);
     }
 
+    @Deprecated
     public LQLazyQueue ofLazyQueue(){
         return new LQLazyQueue(this);
     }
+    
+    @Deprecated
     public LQSequenceQueue ofSequenceQueue(){
         return new LQSequenceQueue(this);
     }
+    
+    @Deprecated
     public LQUniqueQueue ofUniqueQueue(){
         return new LQUniqueQueue(this);
     }

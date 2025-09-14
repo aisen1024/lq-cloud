@@ -18,8 +18,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /**
  * @author aisen
  * @date 2024/10/9
- * @desc 消费者
+ * @desc 消费者 - 旧版轮询式MQ消费者，已被新的队列监听机制替代
+ * @deprecated 推荐使用 LQUnifiedQueue 或 LQStreamUnifiedQueue 的内置监听机制
  **/
+@Deprecated
 public class LQMQConsumer {
 
     private volatile static Map<String, IMQConsumer> registerConsumerMap = new HashMap<>();

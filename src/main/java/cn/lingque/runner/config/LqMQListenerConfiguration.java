@@ -75,20 +75,25 @@ public class LqMQListenerConfiguration implements BeanPostProcessor, Application
         LingQueRedis redis = LingQueRedis.ofKey(key, LQKey.HALF_DAY);
         switch (listener.type()) {
             case SEQUENCE:
+                log.warn("SEQUENCE类型队列已弃用，建议使用UNIFIED替代。队列key: {}", key);
                 LQMQConsumer.register(key, redis.ofSequenceQueue(), messageHandler);
                 break;
             case LAZY:
+                log.warn("LAZY类型队列已弃用，建议使用UNIFIED替代。队列key: {}", key);
                 LQMQConsumer.register(key, redis.ofLazyQueue(), messageHandler);
                 break;
             case UNIQUE:
+                log.warn("UNIQUE类型队列已弃用，建议使用UNIFIED替代。队列key: {}", key);
                 LQMQConsumer.register(key, redis.ofUniqueQueue(), messageHandler);
                 break;
             case UNIFIED:
-                LQMQConsumer.register(key, redis.ofUnifiedQueue(), messageHandler);
+                // 不再使用LQMQConsumer的轮询机制，直接启动队列自己的监听器
+                redis.ofUnifiedQueue().consumer(java.util.Arrays.asList(messageHandler));
                 break;
             case STREAM_UNIFIED:
-                LQMQConsumer.register(key, redis.ofStreamUnifiedQueue(), messageHandler);
-               break;
+                // 不再使用LQMQConsumer的轮询机制，直接启动队列自己的监听器
+                redis.ofStreamUnifiedQueue().consumer(java.util.Arrays.asList(messageHandler));
+                break;
         }
 
         log.info("Registered MQ listener for key: {}, type: {}, method: {}", 
