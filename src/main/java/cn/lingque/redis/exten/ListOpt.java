@@ -1,15 +1,11 @@
 package cn.lingque.redis.exten;
 
 import cn.hutool.json.JSONUtil;
-import cn.lingque.exceptions.LQException;
 import cn.lingque.redis.LingQueRedis;
 import cn.lingque.util.LQUtil;
 import io.lettuce.core.ScriptOutputType;
-import lombok.AllArgsConstructor;
 import lombok.Data;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 

@@ -6,7 +6,6 @@ import cn.lingque.bus.LQBus;
 import cn.lingque.cloud.node.LQRegisterCenter;
 import cn.lingque.cloud.node.bean.LQNodeInfo;
 import cn.lingque.config.LQProperties;
-import cn.lingque.mq.LQMQConsumer;
 import cn.lingque.redis.JedisProxy;
 import cn.lingque.runner.config.LqSpringUtil;
 import cn.lingque.thread.LQThread;
@@ -41,7 +40,7 @@ public class LqCloudRunner {
         }
 
         //启动MQ
-        LQMQConsumer.start();
+
         log.info("<<<<<<<<<灵雀云组件启动成功>>>>>>>>");}
 
     /**

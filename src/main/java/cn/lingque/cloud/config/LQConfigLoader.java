@@ -4,7 +4,6 @@ package cn.lingque.cloud.config;
 import cn.lingque.base.LQKey;
 import cn.lingque.config.LQProperties;
 import cn.lingque.runner.annon.LqEvenBus;
-import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;

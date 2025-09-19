@@ -19,9 +19,4 @@ public @interface LqMQListener {
      * 版本
      */
     double version() default 1.0;
-    
-    /**
-     * 消息队列类型
-     */
-    LqMqType type() default LqMqType.SEQUENCE;
 }

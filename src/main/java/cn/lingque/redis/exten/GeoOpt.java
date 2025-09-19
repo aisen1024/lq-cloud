@@ -3,7 +3,6 @@ package cn.lingque.redis.exten;
 import cn.lingque.redis.LingQueRedis;
 import io.lettuce.core.GeoArgs;
 import io.lettuce.core.GeoCoordinates;
-import io.lettuce.core.GeoValue;
 import io.lettuce.core.GeoWithin;
 import io.lettuce.core.ScriptOutputType;
 import lombok.Data;

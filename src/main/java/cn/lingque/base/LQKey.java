@@ -2,12 +2,11 @@ package cn.lingque.base;
 
 import cn.hutool.core.date.DateField;
 import cn.hutool.core.date.DateUtil;
-import cn.lingque.mq.exten.LQLazyQueue;
-import cn.lingque.mq.exten.LQSequenceQueue;
-import cn.lingque.mq.exten.LQUniqueQueue;
+
+import cn.lingque.mq.exten.LQStreamUnifiedQueue;
+import cn.lingque.mq.exten.LQUnifiedQueue;
 import cn.lingque.redis.LingQueRedis;
 import cn.lingque.redis.exten.*;
-import cn.lingque.scene.LQScene;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
@@ -84,20 +83,13 @@ public class LQKey<T> {
         return new ListOpt(rd(params));
     }
 
-    public LQScene ofScene(Object... params) {
-        return new LQScene(rd(params));
+
+    public LQUnifiedQueue<T> ofUnifiedQueue(Object... params) {
+        return new LQUnifiedQueue<>(rd(params));
     }
 
-    public LQLazyQueue<T> ofLazyQueue(Object... params) {
-        return new LQLazyQueue(rd(params));
-    }
-
-    public LQSequenceQueue<T> ofSequenceQueue(Object... params) {
-        return new LQSequenceQueue(rd(params));
-    }
-
-    public LQUniqueQueue<T> ofUniqueQueue(Object... params) {
-        return new LQUniqueQueue(rd(params));
+    public LQStreamUnifiedQueue<T> ofStreamUnifiedQueue(Object... params) {
+        return new LQStreamUnifiedQueue<>(rd(params));
     }
 
 

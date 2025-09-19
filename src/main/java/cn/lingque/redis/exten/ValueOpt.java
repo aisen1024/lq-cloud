@@ -7,7 +7,6 @@ import io.lettuce.core.ScriptOutputType;
 import lombok.Data;
 
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
 @Data

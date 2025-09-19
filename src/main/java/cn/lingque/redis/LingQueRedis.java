@@ -2,7 +2,6 @@ package cn.lingque.redis;
 import cn.lingque.base.LQKey;
 import cn.lingque.mq.exten.*;
 import cn.lingque.redis.exten.*;
-import cn.lingque.scene.LQScene;
 import io.lettuce.core.api.sync.RedisCommands;
 import lombok.extern.slf4j.Slf4j;
 
@@ -42,25 +41,6 @@ public class LingQueRedis extends BaseOpt{
         return new ListOpt(this);
     }
 
-    public LQScene ofScene(){
-        return new LQScene(this);
-    }
-
-    @Deprecated
-    public LQLazyQueue ofLazyQueue(){
-        return new LQLazyQueue(this);
-    }
-    
-    @Deprecated
-    public LQSequenceQueue ofSequenceQueue(){
-        return new LQSequenceQueue(this);
-    }
-    
-    @Deprecated
-    public LQUniqueQueue ofUniqueQueue(){
-        return new LQUniqueQueue(this);
-    }
-    
     /**
      * 获取统一消息队列实例
      * @return 统一消息队列

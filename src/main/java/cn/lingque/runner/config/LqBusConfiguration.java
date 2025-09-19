@@ -1,13 +1,9 @@
 package cn.lingque.runner.config;
 
-import cn.lingque.base.LQKey;
 import cn.lingque.bus.BusHandleBeanInfo;
 import cn.lingque.bus.LQBus;
-import cn.lingque.mq.LQMQConsumer;
-import cn.lingque.mq.exten.itf.ILQMessage;
-import cn.lingque.redis.LingQueRedis;
+
 import cn.lingque.runner.annon.LqEvenBus;
-import cn.lingque.runner.annon.LqMQListener;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.config.BeanPostProcessor;

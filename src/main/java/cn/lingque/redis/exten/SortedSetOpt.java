@@ -4,15 +4,12 @@ import cn.hutool.json.JSONUtil;
 import cn.lingque.redis.LingQueRedis;
 import cn.lingque.redis.bean.RedisRank;
 import cn.lingque.util.LQUtil;
-import cn.lingque.util.TryCatch;
 import io.lettuce.core.Range;
 import io.lettuce.core.ScriptOutputType;
 import io.lettuce.core.ScoredValue;
-import lombok.AllArgsConstructor;
 import lombok.Data;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Data
 public class SortedSetOpt extends BaseOpt {
