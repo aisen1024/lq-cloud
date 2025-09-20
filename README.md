@@ -428,6 +428,62 @@ public class UserServiceClient {
 
 建议检查服务节点信息和Redis连接，确保心跳正常更新。
 
+## 8. 重构后的最新内容
+
+### 8.1 相关配置
+
+以下是重构后的最新配置示例（基于增强版配置中心）：
+
+```yaml
+ling-que:
+  enhanced:
+    config-center:
+      enabled: true
+      namespace: default
+      refresh-interval: 5000  # 毫秒
+      validators:
+        - type: port
+          pattern: ^\\d{4,5}$
+```
+
+更多配置详情请参考 `application.yml` 中的完整设置。
+
+### 8.2 使用案例
+
+#### 示例1: 分布式RPC调用
+
+```java
+// 注册服务节点
+LQEnhancedRegisterCenter.registerNode(new LQEnhancedNodeInfo("user-service", "192.168.1.100", 8080));
+
+// 调用远程服务
+Object result = LQDistributedServiceCaller.call("user-service", "getUser", new Object[]{1L});
+```
+
+#### 示例2: MCP工具使用
+
+```java
+// 创建文件
+mcpToolHandler.createFile("test.txt", "Hello LQ Cloud!");
+
+// 读取文件
+String content = mcpToolHandler.readFile("test.txt");
+```
+
+更多案例请参考 `src/test/java` 中的示例类，如 `LQDistributedRpcExample.java` 和 `LQMCPToolUsageExample.java`。
+
+### 8.3 性能对比
+
+重构后MQ队列性能显著提升：
+
+- **监听机制**: 原全局50ms轮询 → 现每个队列独立10ms监听 + 统一500ms延迟处理（快5倍）
+- **资源消耗**:
+  - CPU: 避免无意义轮询，只处理有消息队列
+  - 内存: 独立状态管理，避免全局竞争
+  - 线程: 按需启动，不使用队列不消耗资源
+
+详情见 `src/main/java/cn/lingque/mq/README_MQ_REFACTOR.md`。
+
 ---
 
 更多详细信息，请参考[官方文档](https://github.com/aisen1024/lq-cloud)或提交Issue。
