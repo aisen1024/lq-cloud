@@ -32,6 +32,51 @@
       "type": "cn.lingque.config.LQProperties$SentinelProperties",
       "sourceType": "cn.lingque.config.LQProperties",
       "sourceMethod": "public cn.lingque.config.LQProperties.SentinelProperties getSentinel() "
+    },
+    {
+      "name": "lq.config.enhanced",
+      "type": "cn.lingque.cloud.config.enhanced.LQEnhancedConfigProperties",
+      "sourceType": "cn.lingque.cloud.config.enhanced.LQEnhancedConfigProperties"
+    },
+    {
+      "name": "lq.console",
+      "type": "cn.lingque.cloud.console.config.LQConsoleProperties",
+      "sourceType": "cn.lingque.cloud.console.config.LQConsoleProperties"
+    },
+    {
+      "name": "lq.console.security",
+      "type": "cn.lingque.cloud.console.config.LQConsoleProperties$Security",
+      "sourceType": "cn.lingque.cloud.console.config.LQConsoleProperties",
+      "sourceMethod": "public cn.lingque.cloud.console.config.LQConsoleProperties.Security getSecurity() "
+    },
+    {
+      "name": "lq.console.session",
+      "type": "cn.lingque.cloud.console.config.LQConsoleProperties$Session",
+      "sourceType": "cn.lingque.cloud.console.config.LQConsoleProperties",
+      "sourceMethod": "public cn.lingque.cloud.console.config.LQConsoleProperties.Session getSession() "
+    },
+    {
+      "name": "lq.mcp",
+      "type": "cn.lingque.cloud.mcp.LQMCPToolProperties",
+      "sourceType": "cn.lingque.cloud.mcp.LQMCPToolProperties"
+    },
+    {
+      "name": "lq.mcp.client",
+      "type": "cn.lingque.cloud.mcp.LQMCPToolProperties$ClientConfig",
+      "sourceType": "cn.lingque.cloud.mcp.LQMCPToolProperties",
+      "sourceMethod": "public cn.lingque.cloud.mcp.LQMCPToolProperties.ClientConfig getClient() "
+    },
+    {
+      "name": "lq.mcp.registry",
+      "type": "cn.lingque.cloud.mcp.LQMCPToolProperties$RegistryConfig",
+      "sourceType": "cn.lingque.cloud.mcp.LQMCPToolProperties",
+      "sourceMethod": "public cn.lingque.cloud.mcp.LQMCPToolProperties.RegistryConfig getRegistry() "
+    },
+    {
+      "name": "lq.mcp.server",
+      "type": "cn.lingque.cloud.mcp.LQMCPToolProperties$ServerConfig",
+      "sourceType": "cn.lingque.cloud.mcp.LQMCPToolProperties",
+      "sourceMethod": "public cn.lingque.cloud.mcp.LQMCPToolProperties.ServerConfig getServer() "
     }
   ],
   "properties": [
@@ -58,6 +103,12 @@
       "type": "java.lang.String",
       "description": "主节点",
       "sourceType": "cn.lingque.config.LQProperties$ClusterProperties"
+    },
+    {
+      "name": "ling-que.config",
+      "type": "cn.lingque.cloud.config.LQConfigCenterProperties",
+      "description": "配置中心",
+      "sourceType": "cn.lingque.config.LQProperties"
     },
     {
       "name": "ling-que.config.data-ids",
@@ -189,6 +240,276 @@
       "type": "java.lang.String",
       "description": "redis的数据连接名",
       "sourceType": "cn.lingque.config.LQProperties"
+    },
+    {
+      "name": "lq.config.enhanced.auto-cleanup",
+      "type": "java.lang.Boolean",
+      "description": "是否启用自动清理过期配置",
+      "sourceType": "cn.lingque.cloud.config.enhanced.LQEnhancedConfigProperties"
+    },
+    {
+      "name": "lq.config.enhanced.cleanup-initial-delay",
+      "type": "java.lang.Long",
+      "description": "清理任务初始延迟（秒）",
+      "sourceType": "cn.lingque.cloud.config.enhanced.LQEnhancedConfigProperties"
+    },
+    {
+      "name": "lq.config.enhanced.cleanup-interval",
+      "type": "java.lang.Long",
+      "description": "清理任务间隔（秒）",
+      "sourceType": "cn.lingque.cloud.config.enhanced.LQEnhancedConfigProperties"
+    },
+    {
+      "name": "lq.config.enhanced.config-push-event",
+      "type": "java.lang.String",
+      "description": "配置推送事件名称",
+      "sourceType": "cn.lingque.cloud.config.enhanced.LQEnhancedConfigProperties"
+    },
+    {
+      "name": "lq.config.enhanced.default-ttl",
+      "type": "java.lang.Long",
+      "description": "默认配置TTL（毫秒）",
+      "sourceType": "cn.lingque.cloud.config.enhanced.LQEnhancedConfigProperties"
+    },
+    {
+      "name": "lq.config.enhanced.enable-change-log",
+      "type": "java.lang.Boolean",
+      "description": "是否启用配置变更日志",
+      "sourceType": "cn.lingque.cloud.config.enhanced.LQEnhancedConfigProperties"
+    },
+    {
+      "name": "lq.config.enhanced.enable-config-push",
+      "type": "java.lang.Boolean",
+      "description": "是否启用配置推送",
+      "sourceType": "cn.lingque.cloud.config.enhanced.LQEnhancedConfigProperties"
+    },
+    {
+      "name": "lq.config.enhanced.enable-stats",
+      "type": "java.lang.Boolean",
+      "description": "是否启用统计信息",
+      "sourceType": "cn.lingque.cloud.config.enhanced.LQEnhancedConfigProperties"
+    },
+    {
+      "name": "lq.config.enhanced.enabled",
+      "type": "java.lang.Boolean",
+      "description": "是否启用增强版配置中心",
+      "sourceType": "cn.lingque.cloud.config.enhanced.LQEnhancedConfigProperties"
+    },
+    {
+      "name": "lq.config.enhanced.initial-configs",
+      "type": "java.util.List<cn.lingque.cloud.config.enhanced.LQEnhancedConfigProperties$ConfigItem>",
+      "description": "初始配置列表",
+      "sourceType": "cn.lingque.cloud.config.enhanced.LQEnhancedConfigProperties"
+    },
+    {
+      "name": "lq.config.enhanced.max-config-count",
+      "type": "java.lang.Integer",
+      "description": "最大配置数量限制",
+      "sourceType": "cn.lingque.cloud.config.enhanced.LQEnhancedConfigProperties"
+    },
+    {
+      "name": "lq.config.enhanced.max-namespace-count",
+      "type": "java.lang.Integer",
+      "description": "最大命名空间数量限制",
+      "sourceType": "cn.lingque.cloud.config.enhanced.LQEnhancedConfigProperties"
+    },
+    {
+      "name": "lq.config.enhanced.stats-interval",
+      "type": "java.lang.Long",
+      "description": "统计信息打印间隔（秒）",
+      "sourceType": "cn.lingque.cloud.config.enhanced.LQEnhancedConfigProperties"
+    },
+    {
+      "name": "lq.console.context-path",
+      "type": "java.lang.String",
+      "description": "控制台路径前缀",
+      "sourceType": "cn.lingque.cloud.console.config.LQConsoleProperties"
+    },
+    {
+      "name": "lq.console.enabled",
+      "type": "java.lang.Boolean",
+      "description": "是否启用控制台",
+      "sourceType": "cn.lingque.cloud.console.config.LQConsoleProperties"
+    },
+    {
+      "name": "lq.console.port",
+      "type": "java.lang.Integer",
+      "description": "控制台端口",
+      "sourceType": "cn.lingque.cloud.console.config.LQConsoleProperties"
+    },
+    {
+      "name": "lq.console.security.auth-enabled",
+      "type": "java.lang.Boolean",
+      "description": "是否启用认证",
+      "sourceType": "cn.lingque.cloud.console.config.LQConsoleProperties$Security"
+    },
+    {
+      "name": "lq.console.security.jwt-secret",
+      "type": "java.lang.String",
+      "description": "JWT密钥",
+      "sourceType": "cn.lingque.cloud.console.config.LQConsoleProperties$Security"
+    },
+    {
+      "name": "lq.console.security.password",
+      "type": "java.lang.String",
+      "description": "密码",
+      "sourceType": "cn.lingque.cloud.console.config.LQConsoleProperties$Security"
+    },
+    {
+      "name": "lq.console.security.token-expire-hours",
+      "type": "java.lang.Integer",
+      "description": "Token过期时间（小时）",
+      "sourceType": "cn.lingque.cloud.console.config.LQConsoleProperties$Security"
+    },
+    {
+      "name": "lq.console.security.username",
+      "type": "java.lang.String",
+      "description": "用户名",
+      "sourceType": "cn.lingque.cloud.console.config.LQConsoleProperties$Security"
+    },
+    {
+      "name": "lq.console.session.max-concurrent-sessions",
+      "type": "java.lang.Integer",
+      "description": "最大并发会话数",
+      "sourceType": "cn.lingque.cloud.console.config.LQConsoleProperties$Session"
+    },
+    {
+      "name": "lq.console.session.timeout-minutes",
+      "type": "java.lang.Integer",
+      "description": "会话超时时间（分钟）",
+      "sourceType": "cn.lingque.cloud.console.config.LQConsoleProperties$Session"
+    },
+    {
+      "name": "lq.mcp.auto-discovery",
+      "type": "java.lang.Boolean",
+      "description": "是否启用自动发现",
+      "sourceType": "cn.lingque.cloud.mcp.LQMCPToolProperties"
+    },
+    {
+      "name": "lq.mcp.client.connect-timeout",
+      "type": "java.lang.Long",
+      "description": "连接超时时间(毫秒)",
+      "sourceType": "cn.lingque.cloud.mcp.LQMCPToolProperties$ClientConfig"
+    },
+    {
+      "name": "lq.mcp.client.enabled",
+      "type": "java.lang.Boolean",
+      "description": "是否启用客户端",
+      "sourceType": "cn.lingque.cloud.mcp.LQMCPToolProperties$ClientConfig"
+    },
+    {
+      "name": "lq.mcp.client.read-timeout",
+      "type": "java.lang.Long",
+      "description": "读取超时时间(毫秒)",
+      "sourceType": "cn.lingque.cloud.mcp.LQMCPToolProperties$ClientConfig"
+    },
+    {
+      "name": "lq.mcp.client.server-host",
+      "type": "java.lang.String",
+      "description": "服务器主机",
+      "sourceType": "cn.lingque.cloud.mcp.LQMCPToolProperties$ClientConfig"
+    },
+    {
+      "name": "lq.mcp.client.server-port",
+      "type": "java.lang.Integer",
+      "description": "服务器端口",
+      "sourceType": "cn.lingque.cloud.mcp.LQMCPToolProperties$ClientConfig"
+    },
+    {
+      "name": "lq.mcp.enabled",
+      "type": "java.lang.Boolean",
+      "description": "是否启用MCP工具模块",
+      "sourceType": "cn.lingque.cloud.mcp.LQMCPToolProperties"
+    },
+    {
+      "name": "lq.mcp.health-check",
+      "type": "java.lang.Boolean",
+      "description": "是否启用健康检查",
+      "sourceType": "cn.lingque.cloud.mcp.LQMCPToolProperties"
+    },
+    {
+      "name": "lq.mcp.registry.address",
+      "type": "java.lang.String",
+      "description": "注册中心地址",
+      "sourceType": "cn.lingque.cloud.mcp.LQMCPToolProperties$RegistryConfig"
+    },
+    {
+      "name": "lq.mcp.registry.enabled",
+      "type": "java.lang.Boolean",
+      "description": "是否启用注册中心",
+      "sourceType": "cn.lingque.cloud.mcp.LQMCPToolProperties$RegistryConfig"
+    },
+    {
+      "name": "lq.mcp.registry.heartbeat-interval",
+      "type": "java.lang.Long",
+      "description": "心跳间隔(毫秒)",
+      "sourceType": "cn.lingque.cloud.mcp.LQMCPToolProperties$RegistryConfig"
+    },
+    {
+      "name": "lq.mcp.registry.service-name",
+      "type": "java.lang.String",
+      "description": "服务名称",
+      "sourceType": "cn.lingque.cloud.mcp.LQMCPToolProperties$RegistryConfig"
+    },
+    {
+      "name": "lq.mcp.registry.service-version",
+      "type": "java.lang.String",
+      "description": "服务版本",
+      "sourceType": "cn.lingque.cloud.mcp.LQMCPToolProperties$RegistryConfig"
+    },
+    {
+      "name": "lq.mcp.registry.weight",
+      "type": "java.lang.Integer",
+      "description": "服务权重",
+      "sourceType": "cn.lingque.cloud.mcp.LQMCPToolProperties$RegistryConfig"
+    },
+    {
+      "name": "lq.mcp.scan-packages",
+      "type": "java.lang.String[]",
+      "description": "工具扫描包路径",
+      "sourceType": "cn.lingque.cloud.mcp.LQMCPToolProperties"
+    },
+    {
+      "name": "lq.mcp.server.connection-timeout",
+      "type": "java.lang.Long",
+      "description": "连接超时时间(毫秒)",
+      "sourceType": "cn.lingque.cloud.mcp.LQMCPToolProperties$ServerConfig"
+    },
+    {
+      "name": "lq.mcp.server.enabled",
+      "type": "java.lang.Boolean",
+      "description": "是否启用MCP服务器",
+      "sourceType": "cn.lingque.cloud.mcp.LQMCPToolProperties$ServerConfig"
+    },
+    {
+      "name": "lq.mcp.server.host",
+      "type": "java.lang.String",
+      "description": "服务器主机",
+      "sourceType": "cn.lingque.cloud.mcp.LQMCPToolProperties$ServerConfig"
+    },
+    {
+      "name": "lq.mcp.server.max-connections",
+      "type": "java.lang.Integer",
+      "description": "最大连接数",
+      "sourceType": "cn.lingque.cloud.mcp.LQMCPToolProperties$ServerConfig"
+    },
+    {
+      "name": "lq.mcp.server.port",
+      "type": "java.lang.Integer",
+      "description": "服务器端口",
+      "sourceType": "cn.lingque.cloud.mcp.LQMCPToolProperties$ServerConfig"
+    },
+    {
+      "name": "lq.mcp.server.request-timeout",
+      "type": "java.lang.Long",
+      "description": "请求超时时间(毫秒)",
+      "sourceType": "cn.lingque.cloud.mcp.LQMCPToolProperties$ServerConfig"
+    },
+    {
+      "name": "lq.mcp.tools",
+      "type": "java.util.Map<java.lang.String,java.lang.Object>",
+      "description": "工具配置",
+      "sourceType": "cn.lingque.cloud.mcp.LQMCPToolProperties"
     }
   ],
   "hints": []
