@@ -8,6 +8,8 @@ import cn.lingque.cloud.http.bean.HttpRequestInfo;
 import cn.lingque.cloud.http.bean.HttpResponseInfo;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -31,7 +33,7 @@ public class HttpExecutor {
             return HttpResponseInfo.builder()
                     .statusCode(response.getStatus())
                     .body(response.body())
-                    .headers(response.headers())
+                    .headers(convertHeaders(response.headers()))
                     .success(response.isOk())
                     .build();
                     
@@ -95,5 +97,25 @@ public class HttpExecutor {
         }
         
         return request;
+    }
+    
+    /**
+     * 转换响应头格式
+     * 将 Map<String, List<String>> 转换为 Map<String, String>
+     */
+    private static Map<String, String> convertHeaders(Map<String, List<String>> headers) {
+        if (headers == null) {
+            return null;
+        }
+        
+        Map<String, String> result = new HashMap<>();
+        for (Map.Entry<String, List<String>> entry : headers.entrySet()) {
+            List<String> values = entry.getValue();
+            if (values != null && !values.isEmpty()) {
+                // 如果有多个值，用逗号分隔
+                result.put(entry.getKey(), String.join(", ", values));
+            }
+        }
+        return result;
     }
 }
