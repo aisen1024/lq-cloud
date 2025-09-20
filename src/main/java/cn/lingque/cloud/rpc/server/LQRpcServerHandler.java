@@ -5,6 +5,7 @@ import cn.lingque.cloud.rpc.annotation.LQService;
 import cn.lingque.cloud.rpc.bean.LQRpcRequest;
 import cn.lingque.cloud.rpc.bean.LQRpcResponse;
 import cn.lingque.cloud.rpc.trace.LQTraceContext;
+import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeansException;
 import org.springframework.context.ApplicationContext;
@@ -15,7 +16,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 
-import javax.annotation.PostConstruct;
 import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;

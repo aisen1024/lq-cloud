@@ -9,13 +9,13 @@
       "name": "ling-que.bus",
       "type": "cn.lingque.config.LQProperties$RedisPlusBusProperties",
       "sourceType": "cn.lingque.config.LQProperties",
-      "sourceMethod": "public cn.lingque.config.LQProperties.RedisPlusBusProperties getBus() "
+      "sourceMethod": "getBus()"
     },
     {
       "name": "ling-que.cluster",
       "type": "cn.lingque.config.LQProperties$ClusterProperties",
       "sourceType": "cn.lingque.config.LQProperties",
-      "sourceMethod": "public cn.lingque.config.LQProperties.ClusterProperties getCluster() "
+      "sourceMethod": "getCluster()"
     },
     {
       "name": "ling-que.config",
@@ -31,7 +31,7 @@
       "name": "ling-que.sentinel",
       "type": "cn.lingque.config.LQProperties$SentinelProperties",
       "sourceType": "cn.lingque.config.LQProperties",
-      "sourceMethod": "public cn.lingque.config.LQProperties.SentinelProperties getSentinel() "
+      "sourceMethod": "getSentinel()"
     },
     {
       "name": "lq.config.enhanced",
@@ -47,13 +47,13 @@
       "name": "lq.console.security",
       "type": "cn.lingque.cloud.console.config.LQConsoleProperties$Security",
       "sourceType": "cn.lingque.cloud.console.config.LQConsoleProperties",
-      "sourceMethod": "public cn.lingque.cloud.console.config.LQConsoleProperties.Security getSecurity() "
+      "sourceMethod": "getSecurity()"
     },
     {
       "name": "lq.console.session",
       "type": "cn.lingque.cloud.console.config.LQConsoleProperties$Session",
       "sourceType": "cn.lingque.cloud.console.config.LQConsoleProperties",
-      "sourceMethod": "public cn.lingque.cloud.console.config.LQConsoleProperties.Session getSession() "
+      "sourceMethod": "getSession()"
     },
     {
       "name": "lq.mcp",
@@ -64,19 +64,19 @@
       "name": "lq.mcp.client",
       "type": "cn.lingque.cloud.mcp.LQMCPToolProperties$ClientConfig",
       "sourceType": "cn.lingque.cloud.mcp.LQMCPToolProperties",
-      "sourceMethod": "public cn.lingque.cloud.mcp.LQMCPToolProperties.ClientConfig getClient() "
+      "sourceMethod": "getClient()"
     },
     {
       "name": "lq.mcp.registry",
       "type": "cn.lingque.cloud.mcp.LQMCPToolProperties$RegistryConfig",
       "sourceType": "cn.lingque.cloud.mcp.LQMCPToolProperties",
-      "sourceMethod": "public cn.lingque.cloud.mcp.LQMCPToolProperties.RegistryConfig getRegistry() "
+      "sourceMethod": "getRegistry()"
     },
     {
       "name": "lq.mcp.server",
       "type": "cn.lingque.cloud.mcp.LQMCPToolProperties$ServerConfig",
       "sourceType": "cn.lingque.cloud.mcp.LQMCPToolProperties",
-      "sourceMethod": "public cn.lingque.cloud.mcp.LQMCPToolProperties.ServerConfig getServer() "
+      "sourceMethod": "getServer()"
     }
   ],
   "properties": [

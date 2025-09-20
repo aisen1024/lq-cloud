@@ -6,6 +6,7 @@ import cn.lingque.cloud.mcp.processor.LQMCPToolProcessor;
 import cn.lingque.cloud.mcp.registry.LQMCPToolRegistry;
 import cn.lingque.cloud.mcp.server.LQMCPToolServer;
 import cn.lingque.cloud.mcp.client.LQMCPToolClient;
+import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -16,7 +17,6 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 
-import javax.annotation.PostConstruct;
 import java.util.Map;
 
 /**

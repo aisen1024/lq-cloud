@@ -3,13 +3,13 @@ package cn.lingque.cloud.rpc.config;
 import cn.lingque.cloud.node.LQEnhancedRegisterCenter;
 import cn.lingque.cloud.rpc.LQDistributedServiceCaller;
 import cn.lingque.cloud.rpc.server.LQRpcServerHandler;
+import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 
-import javax.annotation.PostConstruct;
 
 /**
  * LQ分布式RPC框架配置类
