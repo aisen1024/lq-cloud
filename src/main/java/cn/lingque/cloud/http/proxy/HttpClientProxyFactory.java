@@ -10,7 +10,7 @@ import cn.lingque.cloud.http.executor.HttpExecutor;
 import cn.lingque.cloud.http.interceptor.InterceptorManager;
 import cn.lingque.cloud.http.processor.ResponseProcessorManager;
 import cn.lingque.cloud.http.resolver.ServiceResolver;
-import cn.lingque.cloud.http.util.LqSpringUtil;
+import cn.lingque.runner.config.LqSpringUtil;
 import lombok.extern.slf4j.Slf4j;
 
 import java.lang.annotation.Annotation;

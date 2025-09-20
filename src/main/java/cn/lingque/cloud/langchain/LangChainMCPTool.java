@@ -7,15 +7,11 @@ import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.service.AiServices;
 import jakarta.annotation.PostConstruct;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 
 @Component
 public class LangChainMCPTool {
-
-    @Autowired
-    private LQEnhancedRegisterCenter registerCenter;
 
     @PostConstruct
     public void init() {

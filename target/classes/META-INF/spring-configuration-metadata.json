@@ -105,12 +105,6 @@
       "sourceType": "cn.lingque.config.LQProperties$ClusterProperties"
     },
     {
-      "name": "ling-que.config",
-      "type": "cn.lingque.cloud.config.LQConfigCenterProperties",
-      "description": "配置中心",
-      "sourceType": "cn.lingque.config.LQProperties"
-    },
-    {
       "name": "ling-que.config.data-ids",
       "type": "java.util.List<cn.lingque.cloud.config.DataId>",
       "description": "文件ids",
