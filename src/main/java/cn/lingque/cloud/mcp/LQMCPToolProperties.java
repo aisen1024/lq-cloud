@@ -2,7 +2,6 @@ package cn.lingque.cloud.mcp;
 
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -14,7 +13,6 @@ import java.util.Map;
  * @date 2024-12-19
  */
 @Data
-@Component
 @ConfigurationProperties(prefix = "lq.mcp")
 public class LQMCPToolProperties {
 

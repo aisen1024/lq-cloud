@@ -341,4 +341,50 @@ public class LQUnifiedQueue<T> implements IMQConsumer<ILQMessage<T>, T> {
         public long getCreateTime() { return createTime; }
         public void setCreateTime(long createTime) { this.createTime = createTime; }
     }
+    
+    /**
+     * 获取瞬时消息数量
+     * @return 瞬时消息数量
+     */
+    public long getInstantMessageCount() {
+        return (Long) redis.execBase((commands) -> {
+            try {
+                return commands.llen(redis.key + INSTANT_SUFFIX);
+            } catch (Exception e) {
+                return 0L;
+            }
+        });
+    }
+    
+    /**
+     * 获取延迟消息数量
+     * @return 延迟消息数量
+     */
+    public long getDelayMessageCount() {
+        return (Long) redis.execBase((commands) -> {
+            try {
+                long totalCount = 0;
+                
+                // 获取所有延迟分片
+                List<String> shardKeys = commands.zrange(redis.key + DELAY_INDEX_SUFFIX, 0, -1);
+                
+                for (String shardKey : shardKeys) {
+                    String delayShardKey = redis.key + DELAY_SUFFIX + ":" + shardKey;
+                    totalCount += commands.zcard(delayShardKey);
+                }
+                
+                return totalCount;
+            } catch (Exception e) {
+                return 0L;
+            }
+        });
+    }
+    
+    /**
+     * 获取总消息数量
+     * @return 总消息数量
+     */
+    public long getTotalMessageCount() {
+        return getInstantMessageCount() + getDelayMessageCount();
+    }
 }

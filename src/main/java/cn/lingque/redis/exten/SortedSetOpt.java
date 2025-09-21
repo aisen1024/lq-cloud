@@ -135,12 +135,20 @@ public class SortedSetOpt extends BaseOpt {
         "return score;";
 
     private static final String PAGE_RANK_LIMIT_SCRIPT =
-        "local total = redis.call('ZCARD', KEYS[1]); " +
         "local members = redis.call('ZRANGE', KEYS[1], ARGV[1], ARGV[2], 'WITHSCORES'); " +
-        "if total > 0 then " +
+        "if #members > 0 then " +
         "    redis.call('EXPIRE', KEYS[1], ARGV[3]); " +
         "end; " +
-        "return {total, members};";
+        "local result = {}; " +
+        "for i = 1, #members, 2 do " +
+        "    local member = members[i]; " +
+        "    local score = members[i + 1]; " +
+        "    local rank = redis.call('ZRANK', KEYS[1], member); " +
+        "    table.insert(result, member); " +
+        "    table.insert(result, score); " +
+        "    table.insert(result, rank); " +
+        "end; " +
+        "return result;";
 
     private static final String GET_RANK_SCRIPT =
         "local rank = redis.call('ZRANK', KEYS[1], ARGV[1]); " +

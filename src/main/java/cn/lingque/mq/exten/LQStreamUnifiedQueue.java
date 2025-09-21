@@ -329,4 +329,59 @@ public class LQStreamUnifiedQueue<T> implements IMQConsumer<ILQMessage<T>, T> {
         return System.currentTimeMillis() + "_" + Thread.currentThread().getId() + "_" + 
                (int)(Math.random() * 10000);
     }
+    
+    /**
+     * 获取Stream中的消息数量
+     * @return 消息数量
+     */
+    public long getStreamMessageCount() {
+        return (Long) redis.execBase((commands) -> {
+            String streamKey = redis.key + STREAM_SUFFIX;
+            try {
+                return commands.xlen(streamKey);
+            } catch (Exception e) {
+                // Stream不存在时返回0
+                return 0L;
+            }
+        });
+    }
+    
+    /**
+     * 获取延迟消息数量
+     * @return 延迟消息数量
+     */
+    public long getDelayMessageCount() {
+        return (Long) redis.execBase((commands) -> {
+            String delayKey = redis.key + DELAY_SUFFIX;
+            try {
+                return commands.zcard(delayKey);
+            } catch (Exception e) {
+                return 0L;
+            }
+        });
+    }
+    
+    /**
+     * 获取队列总消息数（Stream + 延迟）
+     * @return 总消息数量
+     */
+    public long getTotalMessageCount() {
+        return getStreamMessageCount() + getDelayMessageCount();
+    }
+    
+    /**
+     * 获取消费者组待处理消息数量
+     * @return 待处理消息数量
+     */
+    public long getPendingMessageCount() {
+        return (Long) redis.execBase((commands) -> {
+            String streamKey = redis.key + STREAM_SUFFIX;
+            try {
+                // 获取消费者组的待处理消息数量
+                return commands.xpending(streamKey, CONSUMER_GROUP).getCount();
+            } catch (Exception e) {
+                return 0L;
+            }
+        });
+    }
 }

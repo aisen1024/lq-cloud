@@ -1,5 +1,6 @@
 package cn.lingque.cloud.mcp;
 
+import cn.lingque.cloud.console.service.McpToolManagementService;
 import cn.lingque.cloud.mcp.annotation.MCPTool;
 import cn.lingque.cloud.mcp.handler.LQMCPToolHandler;
 import cn.lingque.cloud.mcp.processor.LQMCPToolProcessor;
@@ -9,13 +10,13 @@ import cn.lingque.cloud.mcp.client.LQMCPToolClient;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.ApplicationContext;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.ComponentScan;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.*;
+import org.springframework.context.event.EventListener;
 
 import java.util.Map;
 
@@ -31,7 +32,6 @@ import java.util.Map;
 @EnableConfigurationProperties(LQMCPToolProperties.class)
 @ConditionalOnProperty(prefix = "lq.mcp", name = "enabled", havingValue = "true", matchIfMissing = true)
 @Import({LQMCPToolRegistry.class, LQMCPToolProcessor.class, LQMCPToolHandler.class})
-@ComponentScan(basePackages = {"cn.lingque.cloud.mcp.core", "cn.lingque.cloud.mcp.server", "cn.lingque.cloud.mcp.client"})
 public class LQMCPToolAutoConfiguration {
 
     @Autowired
@@ -51,6 +51,7 @@ public class LQMCPToolAutoConfiguration {
      */
     @Bean
     @ConditionalOnProperty(prefix = "lq.mcp.server", name = "enabled", havingValue = "true", matchIfMissing = true)
+    @ConditionalOnMissingBean(name = "mcpToolServer")
     public LQMCPToolServer mcpToolServer() {
         return new LQMCPToolServer(properties, toolRegistry, toolProcessor);
     }
@@ -60,6 +61,7 @@ public class LQMCPToolAutoConfiguration {
      */
     @Bean
     @ConditionalOnProperty(prefix = "lq.mcp.client", name = "enabled", havingValue = "true")
+    @ConditionalOnMissingBean(name = "mcpToolClient")
     public LQMCPToolClient mcpToolClient() {
         return new LQMCPToolClient.Builder()
                 .serverHost(properties.getClient().getServerHost())
@@ -72,17 +74,19 @@ public class LQMCPToolAutoConfiguration {
     /**
      * 初始化MCP工具
      */
-    @PostConstruct
+    // 移除 @PostConstruct 注解
+    @EventListener(ApplicationReadyEvent.class)
     public void initMCPTools() {
-        log.info("[LQ-MCP] 开始初始化MCP工具模块...");
-        
         try {
+            log.info("[LQ-MCP] 开始初始化MCP工具模块...");
+            
             // 1. 扫描并注册所有@MCPTool注解的Bean
             scanAndRegisterMCPTools();
             
             // 2. 启动MCP工具服务器
             if (properties.getServer().isEnabled()) {
-                LQMCPToolServer server = mcpToolServer();
+                // 此时所有Bean都已创建完成，可以安全获取
+                LQMCPToolServer server = applicationContext.getBean(LQMCPToolServer.class);
                 server.start();
                 log.info("[LQ-MCP] MCP工具服务器已启动，端口: {}", properties.getServer().getPort());
             }
@@ -92,7 +96,6 @@ public class LQMCPToolAutoConfiguration {
             
         } catch (Exception e) {
             log.error("[LQ-MCP] MCP工具模块初始化失败", e);
-            throw new RuntimeException("MCP工具模块初始化失败", e);
         }
     }
 

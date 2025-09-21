@@ -551,26 +551,130 @@ public class McpToolManagementService {
             statusStats.merge(tool.getStatus(), 1L, Long::sum);
         }
         
-        // 计算总执行次数
-        long totalExecutions = mcpTools.values().stream()
-                .mapToLong(tool -> tool.getMetrics().getTotalExecutions())
-                .sum();
-        
-        long totalSuccessfulExecutions = mcpTools.values().stream()
-                .mapToLong(tool -> tool.getMetrics().getSuccessfulExecutions())
-                .sum();
-        
         stats.put("totalTools", totalTools);
         stats.put("enabledTools", enabledTools);
+        stats.put("disabledTools", totalTools - enabledTools);
         stats.put("activeTools", activeTools);
         stats.put("categoryStats", categoryStats);
         stats.put("statusStats", statusStats);
-        stats.put("totalExecutions", totalExecutions);
-        stats.put("totalSuccessfulExecutions", totalSuccessfulExecutions);
-        stats.put("overallSuccessRate", totalExecutions > 0 ? (double) totalSuccessfulExecutions / totalExecutions * 100 : 0);
-        stats.put("lastUpdateTime", new Date());
         
         return stats;
+    }
+    
+    /**
+     * 获取工具性能信息
+     */
+    public Map<String, Object> getToolPerformance(String toolId) {
+        Map<String, Object> performance = new HashMap<>();
+        
+        try {
+            McpTool tool = mcpTools.get(toolId);
+            if (tool == null) {
+                performance.put("error", "工具不存在: " + toolId);
+                performance.put("found", false);
+                return performance;
+            }
+            
+            ToolMetrics metrics = tool.getMetrics();
+            List<ToolExecutionLog> recentLogs = getToolExecutionLogs(toolId, 10);
+            
+            // 基本性能指标
+            performance.put("toolId", toolId);
+            performance.put("toolName", tool.getName());
+            performance.put("found", true);
+            performance.put("enabled", tool.isEnabled());
+            performance.put("status", tool.getStatus());
+            
+            // 执行统计
+            performance.put("totalExecutions", metrics.getTotalExecutions());
+            performance.put("successfulExecutions", metrics.getSuccessfulExecutions());
+            performance.put("failedExecutions", metrics.getFailedExecutions());
+            performance.put("successRate", metrics.getSuccessRate());
+            performance.put("avgExecutionTime", metrics.getAvgExecutionTime());
+            performance.put("totalExecutionTime", metrics.getTotalExecutionTime());
+            performance.put("lastExecutionTime", metrics.getLastExecutionTime());
+            
+            // 错误统计
+            performance.put("errorCounts", metrics.getErrorCounts());
+            
+            // 最近执行记录分析
+            if (!recentLogs.isEmpty()) {
+                // 计算最近执行的平均时间
+                double recentAvgTime = recentLogs.stream()
+                    .filter(log -> log.getDuration() > 0)
+                    .mapToLong(ToolExecutionLog::getDuration)
+                    .average()
+                    .orElse(0.0);
+                
+                // 计算最近的成功率
+                long recentSuccessCount = recentLogs.stream()
+                    .mapToLong(log -> log.isSuccess() ? 1 : 0)
+                    .sum();
+                double recentSuccessRate = recentLogs.size() > 0 ? 
+                    (double) recentSuccessCount / recentLogs.size() * 100 : 0;
+                
+                performance.put("recentAvgExecutionTime", recentAvgTime);
+                performance.put("recentSuccessRate", recentSuccessRate);
+                performance.put("recentExecutionCount", recentLogs.size());
+                
+                // 最近错误信息
+                List<String> recentErrors = recentLogs.stream()
+                    .filter(log -> !log.isSuccess() && log.getErrorMessage() != null)
+                    .map(ToolExecutionLog::getErrorMessage)
+                    .distinct()
+                    .collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
+                performance.put("recentErrors", recentErrors);
+            } else {
+                performance.put("recentAvgExecutionTime", 0.0);
+                performance.put("recentSuccessRate", 0.0);
+                performance.put("recentExecutionCount", 0);
+                performance.put("recentErrors", new ArrayList<>());
+            }
+            
+            // 性能等级评估
+            String performanceLevel = evaluatePerformanceLevel(metrics, recentLogs);
+            performance.put("performanceLevel", performanceLevel);
+            
+            // 配置信息
+            ToolConfiguration config = tool.getConfiguration();
+            Map<String, Object> configInfo = new HashMap<>();
+            configInfo.put("timeout", config.getTimeout());
+            configInfo.put("maxRetries", config.getMaxRetries());
+            configInfo.put("asyncExecution", config.isAsyncExecution());
+            performance.put("configuration", configInfo);
+            
+            // 时间戳
+            performance.put("timestamp", new Date());
+            performance.put("lastUpdateTime", tool.getUpdateTime());
+            
+        } catch (Exception e) {
+            performance.put("error", "获取性能信息时发生错误: " + e.getMessage());
+            performance.put("found", false);
+            performance.put("timestamp", new Date());
+        }
+        
+        return performance;
+    }
+    
+    /**
+     * 评估工具性能等级
+     */
+    private String evaluatePerformanceLevel(ToolMetrics metrics, List<ToolExecutionLog> recentLogs) {
+        // 基于成功率和执行时间评估性能等级
+        double successRate = metrics.getSuccessRate();
+        double avgTime = metrics.getAvgExecutionTime();
+        
+        if (successRate >= 95 && avgTime <= 1000) {
+            return "优秀";
+        } else if (successRate >= 90 && avgTime <= 3000) {
+            return "良好";
+        } else if (successRate >= 80 && avgTime <= 5000) {
+            return "一般";
+        } else if (successRate >= 60) {
+            return "较差";
+        } else {
+            return "很差";
+        }
     }
     
     /**

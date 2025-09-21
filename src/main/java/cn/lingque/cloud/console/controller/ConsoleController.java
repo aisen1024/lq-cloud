@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.lang.management.*;
 import java.util.*;
 
 /**
@@ -15,7 +16,6 @@ import java.util.*;
  */
 @RestController
 @RequestMapping("/api/console")
-@CrossOrigin(origins = "*")
 public class ConsoleController {
     
     @Autowired
@@ -32,6 +32,9 @@ public class ConsoleController {
     
     @Autowired
     private McpToolManagementService mcpToolService;
+    
+    @Autowired
+    private QueueMetricsService queueMetricsService;
     
     // ==================== 认证相关 ====================
     
@@ -596,6 +599,349 @@ public class ConsoleController {
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("data", overview);
+            
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", e.getMessage());
+            return ResponseEntity.badRequest().body(response);
+        }
+    }
+    
+    /**
+     * 仪表盘统计数据接口
+     */
+    @GetMapping("/dashboard/stats")
+    public ResponseEntity<Map<String, Object>> getDashboardStats() {
+        try {
+            Map<String, Object> stats = new HashMap<>();
+            
+            // 队列统计
+            Map<String, Object> queueStats = queueService.getQueueStatistics();
+            stats.put("totalQueues", queueStats.get("totalQueues"));
+            stats.put("activeQueues", queueStats.get("activeQueues"));
+            stats.put("totalMessages", queueStats.get("totalMessages"));
+            stats.put("pendingMessages", queueStats.get("pendingMessages"));
+            
+            // 服务统计
+            Map<String, Object> serviceStats = serviceDiscoveryService.getServiceStatistics();
+            stats.put("totalServices", serviceStats.get("totalServices"));
+            stats.put("healthyServices", serviceStats.get("healthyServices"));
+            stats.put("unhealthyServices", serviceStats.get("unhealthyServices"));
+            stats.put("totalInstances", serviceStats.get("totalInstances"));
+            
+            // 配置统计
+            Map<String, Object> configStats = configCenterService.getConfigStatistics();
+            stats.put("totalConfigs", configStats.get("totalConfigs"));
+            stats.put("activeConfigs", configStats.get("activeConfigs"));
+            stats.put("configNamespaces", configStats.get("totalNamespaces"));
+            stats.put("configGroups", configStats.get("totalGroups"));
+            
+            // MCP工具统计
+            Map<String, Object> toolStats = mcpToolService.getToolStatistics();
+            stats.put("totalTools", toolStats.get("totalTools"));
+            stats.put("enabledTools", toolStats.get("enabledTools"));
+            stats.put("disabledTools", toolStats.get("disabledTools"));
+            stats.put("toolCategories", toolStats.get("totalCategories"));
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("data", stats);
+            
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", e.getMessage());
+            return ResponseEntity.badRequest().body(response);
+        }
+    }
+    
+    // 添加系统监控API
+    @GetMapping("/system/metrics")
+    public ResponseEntity<Map<String, Object>> getSystemMetrics() {
+        try {
+            Map<String, Object> metrics = new HashMap<>();
+            
+            // CPU使用率 - JDK17兼容版本
+            OperatingSystemMXBean osBean = ManagementFactory.getOperatingSystemMXBean();
+            double cpuUsage = getCpuUsage(osBean);
+            metrics.put("cpuUsage", cpuUsage);
+            
+            // 系统负载平均值
+            double systemLoadAverage = osBean.getSystemLoadAverage();
+            metrics.put("systemLoadAverage", systemLoadAverage);
+            
+            // 可用处理器数量
+            int availableProcessors = osBean.getAvailableProcessors();
+            metrics.put("availableProcessors", availableProcessors);
+            
+            // 内存使用率
+            MemoryMXBean memoryBean = ManagementFactory.getMemoryMXBean();
+            MemoryUsage heapUsage = memoryBean.getHeapMemoryUsage();
+            MemoryUsage nonHeapUsage = memoryBean.getNonHeapMemoryUsage();
+            
+            Map<String, Object> memoryInfo = new HashMap<>();
+            memoryInfo.put("heapUsed", heapUsage.getUsed());
+            memoryInfo.put("heapMax", heapUsage.getMax());
+            memoryInfo.put("heapCommitted", heapUsage.getCommitted());
+            memoryInfo.put("heapUsagePercent", heapUsage.getMax() > 0 ? 
+                (double) heapUsage.getUsed() / heapUsage.getMax() * 100 : 0);
+            
+            memoryInfo.put("nonHeapUsed", nonHeapUsage.getUsed());
+            memoryInfo.put("nonHeapMax", nonHeapUsage.getMax());
+            memoryInfo.put("nonHeapCommitted", nonHeapUsage.getCommitted());
+            
+            metrics.put("memory", memoryInfo);
+            
+            // JVM信息
+            RuntimeMXBean runtimeBean = ManagementFactory.getRuntimeMXBean();
+            Map<String, Object> runtimeInfo = new HashMap<>();
+            runtimeInfo.put("uptime", runtimeBean.getUptime());
+            runtimeInfo.put("startTime", runtimeBean.getStartTime());
+            runtimeInfo.put("vmName", runtimeBean.getVmName());
+            runtimeInfo.put("vmVersion", runtimeBean.getVmVersion());
+            runtimeInfo.put("vmVendor", runtimeBean.getVmVendor());
+            runtimeInfo.put("specName", runtimeBean.getSpecName());
+            runtimeInfo.put("specVersion", runtimeBean.getSpecVersion());
+            metrics.put("runtime", runtimeInfo);
+            
+            // 线程信息
+            ThreadMXBean threadBean = ManagementFactory.getThreadMXBean();
+            Map<String, Object> threadInfo = new HashMap<>();
+            threadInfo.put("threadCount", threadBean.getThreadCount());
+            threadInfo.put("peakThreadCount", threadBean.getPeakThreadCount());
+            threadInfo.put("daemonThreadCount", threadBean.getDaemonThreadCount());
+            threadInfo.put("totalStartedThreadCount", threadBean.getTotalStartedThreadCount());
+            metrics.put("threads", threadInfo);
+            
+            // 垃圾回收信息
+            List<GarbageCollectorMXBean> gcBeans = ManagementFactory.getGarbageCollectorMXBeans();
+            List<Map<String, Object>> gcInfo = new ArrayList<>();
+            for (GarbageCollectorMXBean gcBean : gcBeans) {
+                Map<String, Object> gc = new HashMap<>();
+                gc.put("name", gcBean.getName());
+                gc.put("collectionCount", gcBean.getCollectionCount());
+                gc.put("collectionTime", gcBean.getCollectionTime());
+                gc.put("memoryPoolNames", Arrays.asList(gcBean.getMemoryPoolNames()));
+                gcInfo.add(gc);
+            }
+            metrics.put("garbageCollectors", gcInfo);
+            
+            // 内存池信息
+            List<MemoryPoolMXBean> memoryPoolBeans = ManagementFactory.getMemoryPoolMXBeans();
+            List<Map<String, Object>> poolInfo = new ArrayList<>();
+            for (MemoryPoolMXBean poolBean : memoryPoolBeans) {
+                Map<String, Object> pool = new HashMap<>();
+                pool.put("name", poolBean.getName());
+                pool.put("type", poolBean.getType().toString());
+                
+                MemoryUsage usage = poolBean.getUsage();
+                if (usage != null) {
+                    Map<String, Object> usageInfo = new HashMap<>();
+                    usageInfo.put("used", usage.getUsed());
+                    usageInfo.put("committed", usage.getCommitted());
+                    usageInfo.put("max", usage.getMax());
+                    usageInfo.put("init", usage.getInit());
+                    pool.put("usage", usageInfo);
+                }
+                
+                MemoryUsage peakUsage = poolBean.getPeakUsage();
+                if (peakUsage != null) {
+                    Map<String, Object> peakInfo = new HashMap<>();
+                    peakInfo.put("used", peakUsage.getUsed());
+                    peakInfo.put("committed", peakUsage.getCommitted());
+                    peakInfo.put("max", peakUsage.getMax());
+                    peakInfo.put("init", peakUsage.getInit());
+                    pool.put("peakUsage", peakInfo);
+                }
+                
+                poolInfo.add(pool);
+            }
+            metrics.put("memoryPools", poolInfo);
+            
+            // 类加载信息
+            ClassLoadingMXBean classLoadingBean = ManagementFactory.getClassLoadingMXBean();
+            Map<String, Object> classLoadingInfo = new HashMap<>();
+            classLoadingInfo.put("loadedClassCount", classLoadingBean.getLoadedClassCount());
+            classLoadingInfo.put("totalLoadedClassCount", classLoadingBean.getTotalLoadedClassCount());
+            classLoadingInfo.put("unloadedClassCount", classLoadingBean.getUnloadedClassCount());
+            metrics.put("classLoading", classLoadingInfo);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("data", metrics);
+            response.put("timestamp", System.currentTimeMillis());
+            
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "获取系统指标失败: " + e.getMessage());
+            response.put("timestamp", System.currentTimeMillis());
+            return ResponseEntity.badRequest().body(response);
+        }
+    }
+    
+    /**
+     * 获取CPU使用率 - JDK17兼容版本
+     * 使用反射来安全地访问特定于平台的方法
+     */
+    private double getCpuUsage(OperatingSystemMXBean osBean) {
+        try {
+            // 尝试使用com.sun.management.OperatingSystemMXBean的方法
+            if (osBean instanceof com.sun.management.OperatingSystemMXBean) {
+                com.sun.management.OperatingSystemMXBean sunOsBean = 
+                    (com.sun.management.OperatingSystemMXBean) osBean;
+                double cpuLoad = sunOsBean.getCpuLoad();
+                if (cpuLoad >= 0) {
+                    return cpuLoad * 100;
+                }
+            }
+            
+            // 如果上述方法不可用，尝试使用反射
+            try {
+                java.lang.reflect.Method method = osBean.getClass().getMethod("getCpuLoad");
+                method.setAccessible(true);
+                Object result = method.invoke(osBean);
+                if (result instanceof Double) {
+                    double cpuLoad = (Double) result;
+                    if (cpuLoad >= 0) {
+                        return cpuLoad * 100;
+                    }
+                }
+            } catch (Exception reflectionException) {
+                // 反射失败，继续尝试其他方法
+            }
+            
+            // 尝试使用getProcessCpuLoad方法
+            try {
+                java.lang.reflect.Method method = osBean.getClass().getMethod("getProcessCpuLoad");
+                method.setAccessible(true);
+                Object result = method.invoke(osBean);
+                if (result instanceof Double) {
+                    double cpuLoad = (Double) result;
+                    if (cpuLoad >= 0) {
+                        return cpuLoad * 100;
+                    }
+                }
+            } catch (Exception reflectionException) {
+                // 反射失败，返回默认值
+            }
+            
+            // 如果所有方法都失败，返回-1表示不可用
+            return -1.0;
+            
+        } catch (Exception e) {
+            // 发生异常时返回-1
+            return -1.0;
+        }
+    }
+
+    // 添加配置验证API
+    @PostMapping("/configs/validate")
+    public ResponseEntity<Map<String, Object>> validateConfig(@RequestBody Map<String, Object> request) {
+        try {
+            // 从请求中提取所需参数
+            String namespace = (String) request.get("namespace");
+            String group = (String) request.get("group");
+            String key = (String) request.get("key");
+            String value = (String) request.get("value");
+            String dataType = (String) request.get("dataType");
+            String environment = (String) request.get("environment");
+            
+            // 执行配置验证逻辑
+            Map<String, Object> validationResult = configCenterService.validateConfigData(
+                namespace, group, key, value, dataType, environment);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("valid", validationResult.get("valid"));
+            response.put("errors", validationResult.get("errors"));
+            response.put("warnings", validationResult.get("warnings"));
+            
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", e.getMessage());
+            return ResponseEntity.badRequest().body(response);
+        }
+    }
+    
+    // 添加MCP工具性能分析API
+    @GetMapping("/mcp-tools/{toolId}/performance")
+    public ResponseEntity<Map<String, Object>> getToolPerformance(@PathVariable String toolId) {
+        try {
+            Map<String, Object> performance = mcpToolService.getToolPerformance(toolId);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("data", performance);
+            
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", e.getMessage());
+            return ResponseEntity.badRequest().body(response);
+        }
+    }
+    
+    /**
+     * 获取队列指标统计
+     */
+    @GetMapping("/queues/metrics")
+    public ResponseEntity<Map<String, Object>> getQueueMetrics() {
+        try {
+            Map<String, Object> metrics = queueMetricsService.getAllQueueMetrics();
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("data", metrics);
+            
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", e.getMessage());
+            return ResponseEntity.badRequest().body(response);
+        }
+    }
+    
+    /**
+     * 获取UNIFIED队列指标
+     */
+    @GetMapping("/queues/metrics/unified")
+    public ResponseEntity<Map<String, Object>> getUnifiedQueueMetrics() {
+        try {
+            Map<String, Object> metrics = queueMetricsService.getUnifiedQueueMetrics();
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("data", metrics);
+            
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", e.getMessage());
+            return ResponseEntity.badRequest().body(response);
+        }
+    }
+    
+    /**
+     * 获取STREAM_UNIFIED队列指标
+     */
+    @GetMapping("/queues/metrics/stream")
+    public ResponseEntity<Map<String, Object>> getStreamUnifiedQueueMetrics() {
+        try {
+            Map<String, Object> metrics = queueMetricsService.getStreamUnifiedQueueMetrics();
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("data", metrics);
             
             return ResponseEntity.ok(response);
         } catch (Exception e) {

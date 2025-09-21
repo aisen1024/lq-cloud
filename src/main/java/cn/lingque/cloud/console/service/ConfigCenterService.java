@@ -416,33 +416,197 @@ public class ConfigCenterService {
     public Map<String, Object> getConfigStatistics() {
         Map<String, Object> stats = new HashMap<>();
         
-        long totalConfigs = configItems.values().stream().mapToLong(c -> c.isActive() ? 1 : 0).sum();
-        long totalGroups = configGroups.size();
+        long totalConfigs = configItems.size();
+        long activeConfigs = configItems.values().stream().mapToLong(c -> c.isActive() ? 1 : 0).sum();
         
+        Map<String, Long> groupStats = new HashMap<>();
         Map<String, Long> envStats = new HashMap<>();
         Map<String, Long> typeStats = new HashMap<>();
-        Map<String, Long> namespaceStats = new HashMap<>();
         
         for (ConfigItem config : configItems.values()) {
-            if (!config.isActive()) continue;
-            
+            groupStats.merge(config.getGroup(), 1L, Long::sum);
             envStats.merge(config.getEnvironment(), 1L, Long::sum);
             typeStats.merge(config.getDataType(), 1L, Long::sum);
-            namespaceStats.merge(config.getNamespace(), 1L, Long::sum);
         }
         
         stats.put("totalConfigs", totalConfigs);
-        stats.put("totalGroups", totalGroups);
+        stats.put("activeConfigs", activeConfigs);
+        stats.put("inactiveConfigs", totalConfigs - activeConfigs);
+        stats.put("groupStats", groupStats);
         stats.put("environmentStats", envStats);
         stats.put("dataTypeStats", typeStats);
-        stats.put("namespaceStats", namespaceStats);
-        stats.put("lastUpdateTime", new Date());
+        stats.put("totalGroups", configGroups.size());
         
         return stats;
     }
+
+    /**
+     * 验证配置数据
+     */
+    public Map<String, Object> validateConfigData(String namespace, String group, String key, 
+                                                 String value, String dataType, String environment) {
+        Map<String, Object> result = new HashMap<>();
+        List<String> errors = new ArrayList<>();
+        List<String> warnings = new ArrayList<>();
+        
+        try {
+            // 创建临时配置项进行验证
+            ConfigItem tempConfig = new ConfigItem();
+            tempConfig.setNamespace(namespace);
+            tempConfig.setGroup(group);
+            tempConfig.setKey(key);
+            tempConfig.setValue(value);
+            tempConfig.setDataType(dataType);
+            tempConfig.setEnvironment(environment);
+            
+            // 基本验证
+            if (key == null || key.trim().isEmpty()) {
+                errors.add("配置键不能为空");
+            }
+            
+            if (namespace == null || namespace.trim().isEmpty()) {
+                errors.add("命名空间不能为空");
+            }
+            
+            if (group == null || group.trim().isEmpty()) {
+                errors.add("配置组不能为空");
+            }
+            
+            if (environment == null || environment.trim().isEmpty()) {
+                errors.add("环境不能为空");
+            }
+            
+            // 检查是否已存在相同配置
+            ConfigItem existingConfig = getConfigByFullKey(namespace, group, key, environment);
+            if (existingConfig != null) {
+                warnings.add("配置已存在，将会覆盖现有配置");
+            }
+            
+            // 数据类型验证
+            if (value != null && !value.trim().isEmpty()) {
+                validateDataType(value, dataType, errors);
+            }
+            
+            // 调用现有的验证方法
+            if (errors.isEmpty()) {
+                try {
+                    validateConfigValue(tempConfig);
+                } catch (RuntimeException e) {
+                    errors.add(e.getMessage());
+                }
+            }
+            
+            result.put("valid", errors.isEmpty());
+            result.put("errors", errors);
+            result.put("warnings", warnings);
+            result.put("timestamp", new Date());
+            
+        } catch (Exception e) {
+            errors.add("验证过程中发生错误: " + e.getMessage());
+            result.put("valid", false);
+            result.put("errors", errors);
+            result.put("warnings", warnings);
+            result.put("timestamp", new Date());
+        }
+        
+        return result;
+    }
     
     /**
-     * 验证配置值
+     * 获取验证错误信息
+     */
+    public List<String> getValidationErrors(String configId) {
+        List<String> errors = new ArrayList<>();
+        
+        try {
+            ConfigItem config = getConfigById(configId);
+            if (config == null) {
+                errors.add("配置不存在: " + configId);
+                return errors;
+            }
+            
+            // 验证配置完整性
+            if (config.getKey() == null || config.getKey().trim().isEmpty()) {
+                errors.add("配置键不能为空");
+            }
+            
+            if (config.getNamespace() == null || config.getNamespace().trim().isEmpty()) {
+                errors.add("命名空间不能为空");
+            }
+            
+            if (config.getGroup() == null || config.getGroup().trim().isEmpty()) {
+                errors.add("配置组不能为空");
+            }
+            
+            if (config.getEnvironment() == null || config.getEnvironment().trim().isEmpty()) {
+                errors.add("环境不能为空");
+            }
+            
+            // 数据类型验证
+            if (config.getValue() != null && !config.getValue().trim().isEmpty()) {
+                validateDataType(config.getValue(), config.getDataType(), errors);
+            }
+            
+            // 调用现有的验证方法
+            try {
+                validateConfigValue(config);
+            } catch (RuntimeException e) {
+                errors.add(e.getMessage());
+            }
+            
+        } catch (Exception e) {
+            errors.add("获取验证错误时发生异常: " + e.getMessage());
+        }
+        
+        return errors;
+    }
+    
+    /**
+     * 验证数据类型
+     */
+    private void validateDataType(String value, String dataType, List<String> errors) {
+        if (dataType == null) return;
+        
+        switch (dataType.toLowerCase()) {
+            case "number":
+                try {
+                    Double.parseDouble(value);
+                } catch (NumberFormatException e) {
+                    errors.add("值不是有效的数字格式: " + value);
+                }
+                break;
+            case "boolean":
+                if (!"true".equalsIgnoreCase(value) && !"false".equalsIgnoreCase(value)) {
+                    errors.add("值不是有效的布尔格式，应为 true 或 false: " + value);
+                }
+                break;
+            case "json":
+                try {
+                    // 简单的JSON格式检查
+                    if (!value.trim().startsWith("{") && !value.trim().startsWith("[")) {
+                        errors.add("值不是有效的JSON格式: " + value);
+                    }
+                } catch (Exception e) {
+                    errors.add("JSON格式验证失败: " + e.getMessage());
+                }
+                break;
+            case "yaml":
+                // YAML格式的基本检查
+                if (value.contains("\t")) {
+                    errors.add("YAML格式不应包含制表符，请使用空格缩进");
+                }
+                break;
+            case "properties":
+                // Properties格式的基本检查
+                if (!value.contains("=") && !value.contains(":")) {
+                    errors.add("Properties格式应包含键值对分隔符 '=' 或 ':'");
+                }
+                break;
+        }
+    }
+    
+    /**
+     * 验证配置值（缺失的方法）
      */
     private void validateConfigValue(ConfigItem config) {
         ConfigValidation validation = config.getValidation();
@@ -458,33 +622,73 @@ public class ConfigCenterService {
         if (value == null) return;
         
         // 正则验证
-        if (validation.getPattern() != null && !value.matches(validation.getPattern())) {
-            throw new RuntimeException("配置值格式不正确: " + config.getKey());
+        if (validation.getPattern() != null && !validation.getPattern().isEmpty()) {
+            if (!value.matches(validation.getPattern())) {
+                throw new RuntimeException("配置值格式不正确: " + config.getKey() + 
+                    ", 期望格式: " + validation.getPattern());
+            }
         }
         
         // 允许值验证
         if (!validation.getAllowedValues().isEmpty() && !validation.getAllowedValues().contains(value)) {
-            throw new RuntimeException("配置值不在允许范围内: " + config.getKey());
+            throw new RuntimeException("配置值不在允许范围内: " + config.getKey() + 
+                ", 允许的值: " + validation.getAllowedValues());
         }
         
         // 数值范围验证
         if ("number".equals(config.getDataType())) {
             try {
                 double numValue = Double.parseDouble(value);
-                if (validation.getMinValue() != null) {
+                if (validation.getMinValue() != null && !validation.getMinValue().isEmpty()) {
                     double minValue = Double.parseDouble(validation.getMinValue());
                     if (numValue < minValue) {
-                        throw new RuntimeException("配置值小于最小值: " + config.getKey());
+                        throw new RuntimeException("配置值小于最小值: " + config.getKey() + 
+                            ", 最小值: " + minValue + ", 当前值: " + numValue);
                     }
                 }
-                if (validation.getMaxValue() != null) {
+                if (validation.getMaxValue() != null && !validation.getMaxValue().isEmpty()) {
                     double maxValue = Double.parseDouble(validation.getMaxValue());
                     if (numValue > maxValue) {
-                        throw new RuntimeException("配置值大于最大值: " + config.getKey());
+                        throw new RuntimeException("配置值大于最大值: " + config.getKey() + 
+                            ", 最大值: " + maxValue + ", 当前值: " + numValue);
                     }
                 }
             } catch (NumberFormatException e) {
-                throw new RuntimeException("配置值不是有效数字: " + config.getKey());
+                throw new RuntimeException("配置值不是有效数字: " + config.getKey() + ", 值: " + value);
+            }
+        }
+        
+        // 字符串长度验证（如果配置了最小值和最大值作为长度限制）
+        if ("string".equals(config.getDataType())) {
+            if (validation.getMinValue() != null && !validation.getMinValue().isEmpty()) {
+                try {
+                    int minLength = Integer.parseInt(validation.getMinValue());
+                    if (value.length() < minLength) {
+                        throw new RuntimeException("配置值长度小于最小长度: " + config.getKey() + 
+                            ", 最小长度: " + minLength + ", 当前长度: " + value.length());
+                    }
+                } catch (NumberFormatException e) {
+                    // 忽略非数字的最小值设置
+                }
+            }
+            if (validation.getMaxValue() != null && !validation.getMaxValue().isEmpty()) {
+                try {
+                    int maxLength = Integer.parseInt(validation.getMaxValue());
+                    if (value.length() > maxLength) {
+                        throw new RuntimeException("配置值长度大于最大长度: " + config.getKey() + 
+                            ", 最大长度: " + maxLength + ", 当前长度: " + value.length());
+                    }
+                } catch (NumberFormatException e) {
+                    // 忽略非数字的最大值设置
+                }
+            }
+        }
+        
+        // 布尔值验证
+        if ("boolean".equals(config.getDataType())) {
+            if (!"true".equalsIgnoreCase(value) && !"false".equalsIgnoreCase(value)) {
+                throw new RuntimeException("配置值不是有效的布尔值: " + config.getKey() + 
+                    ", 值: " + value + ", 应为 true 或 false");
             }
         }
     }

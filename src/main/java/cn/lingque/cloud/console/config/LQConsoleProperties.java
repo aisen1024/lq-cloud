@@ -37,6 +37,27 @@ public class LQConsoleProperties {
      */
     private Session session = new Session();
     
+    /**
+     * MCP工具配置
+     */
+    private McpConfig mcp = new McpConfig();
+
+    public Session getSession() {
+        return session;
+    }
+
+    public void setSession(Session session) {
+        this.session = session;
+    }
+    
+    public McpConfig getMcp() {
+        return mcp;
+    }
+    
+    public void setMcp(McpConfig mcp) {
+        this.mcp = mcp;
+    }
+    
     public boolean isEnabled() {
         return enabled;
     }
@@ -67,14 +88,6 @@ public class LQConsoleProperties {
     
     public void setSecurity(Security security) {
         this.security = security;
-    }
-    
-    public Session getSession() {
-        return session;
-    }
-    
-    public void setSession(Session session) {
-        this.session = session;
     }
     
     /**
@@ -175,6 +188,72 @@ public class LQConsoleProperties {
         
         public void setMaxConcurrentSessions(int maxConcurrentSessions) {
             this.maxConcurrentSessions = maxConcurrentSessions;
+        }
+    }
+    
+    /**
+     * MCP工具配置
+     */
+    public static class McpConfig {
+        /**
+         * 是否启用MCP工具模块
+         */
+        private boolean enabled = true;
+        
+        /**
+         * 是否启用自动发现
+         */
+        private boolean autoDiscovery = true;
+        
+        /**
+         * 是否启用健康检查
+         */
+        private boolean healthCheck = true;
+        
+        /**
+         * 工具扫描包路径
+         */
+        private String[] scanPackages = {"cn.lingque"};
+        
+        /**
+         * 服务器配置
+         */
+        private ServerConfig server = new ServerConfig();
+        
+        /**
+         * 客户端配置
+         */
+        private ClientConfig client = new ClientConfig();
+        
+        /**
+         * 注册中心配置
+         */
+        private RegistryConfig registry = new RegistryConfig();
+        
+        public static class ServerConfig {
+            private boolean enabled = true;
+            private int port = 8090;
+            private String host = "0.0.0.0";
+            private int maxConnections = 100;
+            private long connectionTimeout = 30000;
+            private long requestTimeout = 60000;
+        }
+        
+        public static class ClientConfig {
+            private boolean enabled = false;
+            private String serverHost = "localhost";
+            private int serverPort = 8080;
+            private long connectTimeout = 5000;
+            private long readTimeout = 30000;
+        }
+        
+        public static class RegistryConfig {
+            private boolean enabled = true;
+            private String address = "localhost:6379";
+            private String serviceName = "mcp-tools";
+            private String serviceVersion = "1.0.0";
+            private long heartbeatInterval = 30000;
+            private int weight = 100;
         }
     }
 }

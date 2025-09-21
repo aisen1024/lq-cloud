@@ -1,0 +1,19 @@
+lq:
+  console:
+    enabled: true
+    port: 8080
+    security:
+      username: admin
+      password: admin123
+  mcp:
+    enabled: true
+    autoDiscovery: true
+    healthCheck: true
+    server:
+      enabled: true
+      port: 8090
+      host: 0.0.0.0
+    client:
+      enabled: false
+      serverHost: localhost
+      serverPort: 8080
