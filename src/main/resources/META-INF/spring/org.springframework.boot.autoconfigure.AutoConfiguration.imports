@@ -1,1 +1,14 @@
+# 灵雀云自动配置 - 作为Spring Boot Starter组件
+# 加载顺序: 核心配置必须最先加载
+
+# 1. 核心配置(最高优先级) - 初始化线程池、Redis、注册中心、消息总线
+cn.lingque.config.LQCloudAutoConfiguration
+
+# 2. HTTP客户端配置
 cn.lingque.cloud.http.config.HttpClientAutoConfiguration
+
+# 3. MQ监听器配置 - 依赖核心配置
+cn.lingque.runner.config.LqMQListenerConfiguration
+
+# 4. 消息总线配置 - 依赖核心配置
+cn.lingque.runner.config.LqBusConfiguration

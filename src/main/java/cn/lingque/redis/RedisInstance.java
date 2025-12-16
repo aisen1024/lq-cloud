@@ -1,6 +1,7 @@
 package cn.lingque.redis;
 
 import cn.lingque.config.LQProperties;
+import cn.lingque.util.LQUtil;
 import io.lettuce.core.*;
 import io.lettuce.core.api.StatefulRedisConnection;
 import io.lettuce.core.api.sync.RedisCommands;
@@ -107,7 +108,7 @@ public class RedisInstance {
         return RedisURI.builder()
                 .withHost(props.getIp())
                 .withPort(Integer.parseInt(props.getPort()))
-                .withPassword(props.getPassword().toCharArray())
+                .withPassword(LQUtil.isEmpty(props.getPassword()) ?null:props.getPassword().toCharArray())
                 .withDatabase(props.getDb())
                 .withTimeout(Duration.ofMillis(props.getTimeout()))
                 .build();

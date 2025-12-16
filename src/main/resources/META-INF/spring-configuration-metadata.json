@@ -1,0 +1,167 @@
+{
+  "groups": [
+    {
+      "name": "ling-que",
+      "type": "cn.lingque.config.LQProperties",
+      "description": "灵雀云配置属性"
+    },
+    {
+      "name": "ling-que.server",
+      "type": "cn.lingque.cloud.node.ServerConfig",
+      "description": "服务节点配置"
+    },
+    {
+      "name": "ling-que.config",
+      "type": "cn.lingque.cloud.config.LQConfigCenterProperties",
+      "description": "配置中心属性"
+    },
+    {
+      "name": "ling-que.bus",
+      "type": "cn.lingque.config.LQProperties$RedisPlusBusProperties",
+      "description": "消息总线配置"
+    }
+  ],
+  "properties": [
+    {
+      "name": "ling-que.enabled",
+      "type": "java.lang.Boolean",
+      "defaultValue": true,
+      "description": "是否启用灵雀云组件"
+    },
+    {
+      "name": "ling-que.application-name",
+      "type": "java.lang.String",
+      "defaultValue": "灵雀智能平台",
+      "description": "应用名称"
+    },
+    {
+      "name": "ling-que.application-desc",
+      "type": "java.lang.String",
+      "defaultValue": "现代化的微服务管理解决方案，让您的应用部署和运维变得简单高效",
+      "description": "应用描述"
+    },
+    {
+      "name": "ling-que.host",
+      "type": "java.lang.String",
+      "defaultValue": "localhost",
+      "description": "Redis服务器IP地址"
+    },
+    {
+      "name": "ling-que.port",
+      "type": "java.lang.String",
+      "defaultValue": "6379",
+      "description": "Redis服务器端口"
+    },
+    {
+      "name": "ling-que.db",
+      "type": "java.lang.Integer",
+      "defaultValue": 0,
+      "description": "Redis数据库索引"
+    },
+    {
+      "name": "ling-que.username",
+      "type": "java.lang.String",
+      "defaultValue": "default",
+      "description": "Redis连接用户名"
+    },
+    {
+      "name": "ling-que.password",
+      "type": "java.lang.String",
+      "description": "Redis连接密码"
+    },
+    {
+      "name": "ling-que.mode",
+      "type": "java.lang.String",
+      "defaultValue": "standalone",
+      "description": "Redis模式：standalone(单机)、cluster(集群)、sentinel(哨兵)"
+    },
+    {
+      "name": "ling-que.max-total",
+      "type": "java.lang.Integer",
+      "defaultValue": 50,
+      "description": "Redis最大连接数"
+    },
+    {
+      "name": "ling-que.max-idle",
+      "type": "java.lang.Integer",
+      "defaultValue": 20,
+      "description": "Redis最大空闲连接数"
+    },
+    {
+      "name": "ling-que.min-idle",
+      "type": "java.lang.Integer",
+      "defaultValue": 10,
+      "description": "Redis最小空闲连接数"
+    },
+    {
+      "name": "ling-que.timeout",
+      "type": "java.lang.Integer",
+      "defaultValue": 10000,
+      "description": "Redis连接超时时间(毫秒)"
+    },
+    {
+      "name": "ling-que.server.server-name",
+      "type": "java.lang.String",
+      "description": "微服务名称"
+    },
+    {
+      "name": "ling-que.server.server-host",
+      "type": "java.lang.String",
+      "description": "微服务注册IP地址"
+    },
+    {
+      "name": "ling-que.server.server-port",
+      "type": "java.lang.Integer",
+      "description": "微服务注册端口"
+    },
+    {
+      "name": "ling-que.bus.server-name",
+      "type": "java.lang.String",
+      "defaultValue": "ling-server",
+      "description": "消息总线服务名称"
+    },
+    {
+      "name": "ling-que.bus.enable",
+      "type": "java.lang.Boolean",
+      "defaultValue": true,
+      "description": "是否启用消息总线"
+    },
+    {
+      "name": "lq.console.enabled",
+      "type": "java.lang.Boolean",
+      "defaultValue": true,
+      "description": "是否启用控制台功能"
+    },
+    {
+      "name": "lq.http.client.enabled",
+      "type": "java.lang.Boolean",
+      "defaultValue": true,
+      "description": "是否启用HTTP客户端功能"
+    },
+    {
+      "name": "lq.config.enhanced.enabled",
+      "type": "java.lang.Boolean",
+      "defaultValue": true,
+      "description": "是否启用增强版配置中心"
+    }
+  ],
+  "hints": [
+    {
+      "name": "ling-que.mode",
+      "values": [
+        {
+          "value": "standalone",
+          "description": "单机模式"
+        },
+        {
+          "value": "cluster",
+          "description": "集群模式"
+        },
+        {
+          "value": "sentinel",
+          "description": "哨兵模式"
+        }
+      ]
+    }
+  ]
+}

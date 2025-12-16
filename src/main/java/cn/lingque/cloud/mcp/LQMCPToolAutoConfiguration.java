@@ -1,13 +1,11 @@
 package cn.lingque.cloud.mcp;
 
-import cn.lingque.cloud.console.service.McpToolManagementService;
 import cn.lingque.cloud.mcp.annotation.MCPTool;
 import cn.lingque.cloud.mcp.handler.LQMCPToolHandler;
 import cn.lingque.cloud.mcp.processor.LQMCPToolProcessor;
 import cn.lingque.cloud.mcp.registry.LQMCPToolRegistry;
 import cn.lingque.cloud.mcp.server.LQMCPToolServer;
 import cn.lingque.cloud.mcp.client.LQMCPToolClient;
-import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;

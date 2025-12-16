@@ -22,6 +22,10 @@ public class LqCloudRunner {
 
     public LqCloudRunner(LQProperties lqProperties){
 
+        //构建线程池
+        LQThread thread = LQThread.init(lqProperties);
+        LQThreadUtil.init(thread);
+
         //检查配置，初始化基础
         checkConfig(lqProperties);
 
@@ -40,7 +44,6 @@ public class LqCloudRunner {
         }
 
         //启动MQ
-
         log.info("<<<<<<<<<灵雀云组件启动成功>>>>>>>>");}
 
     /**
@@ -68,9 +71,7 @@ public class LqCloudRunner {
     private void doInit(LQProperties lqProperties){
         //构建redis实例
         JedisProxy.init(lqProperties);
-        //构建线程池
-        LQThread thread = LQThread.init(lqProperties);
-        LQThreadUtil.init(thread);
+
     }
 
     /**

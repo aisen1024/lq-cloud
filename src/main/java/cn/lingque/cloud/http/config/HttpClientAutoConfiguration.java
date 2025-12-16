@@ -3,7 +3,9 @@ package cn.lingque.cloud.http.config;
 import cn.lingque.cloud.http.interceptor.InterceptorManager;
 import cn.lingque.cloud.http.processor.ResponseProcessorManager;
 import cn.lingque.cloud.http.scanner.HttpClientScanner;
+import cn.lingque.config.LQCloudAutoConfiguration;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
@@ -11,12 +13,14 @@ import org.springframework.context.annotation.Configuration;
 
 /**
  * HTTP客户端自动配置
+ * 在核心组件之后加载
  * 
  * @author aisen
  * @date 2024-12-19
  */
 @Slf4j
 @Configuration
+@AutoConfigureAfter(LQCloudAutoConfiguration.class)
 @ConditionalOnProperty(name = "lq.http.client.enabled", havingValue = "true", matchIfMissing = true)
 public class HttpClientAutoConfiguration {
     
