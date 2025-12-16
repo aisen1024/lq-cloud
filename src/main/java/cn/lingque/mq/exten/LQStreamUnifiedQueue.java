@@ -53,8 +53,8 @@ public class LQStreamUnifiedQueue<T> implements IMQConsumer<ILQMessage<T>, T> {
         return (String) redis.execBase((commands) -> {
             String streamKey = redis.key + STREAM_SUFFIX;
             
-            // 确保消费者组存在
-            TryCatch.trying(() -> {
+            // 确保消费者组存在（忽略BUSYGROUP错误）
+            TryCatch.tryingIgnoreError(() -> {
                 commands.xgroupCreate(
                     XReadArgs.StreamOffset.from(streamKey, "0"), 
                     CONSUMER_GROUP, 
@@ -254,8 +254,8 @@ public class LQStreamUnifiedQueue<T> implements IMQConsumer<ILQMessage<T>, T> {
             String consumerName = CONSUMER_NAME + Thread.currentThread().getId();
             
             redis.execBase((commands) -> {
-                // 确保消费者组存在
-                TryCatch.trying(() -> {
+                // 确保消费者组存在（忽略BUSYGROUP错误）
+                TryCatch.tryingIgnoreError(() -> {
                     commands.xgroupCreate(
                         XReadArgs.StreamOffset.from(streamKey, "0"), 
                         CONSUMER_GROUP, 
