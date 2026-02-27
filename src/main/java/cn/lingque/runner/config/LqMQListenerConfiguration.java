@@ -2,8 +2,9 @@ package cn.lingque.runner.config;
 
 import cn.lingque.base.LQKey;
 import cn.lingque.config.LQCloudAutoConfiguration;
-import cn.lingque.mq.exten.itf.ILQMessage;
-import cn.lingque.redis.LingQueRedis;
+import cn.lingque.mq.LQMQTemplate;
+import cn.lingque.mq.core.LQMQSubscriptionManager;
+import cn.lingque.mq.itf.ILQMessage;
 import cn.lingque.runner.LqCloudRunner;
 import cn.lingque.runner.annon.LqMQListener;
 import lombok.extern.slf4j.Slf4j;
@@ -54,6 +55,9 @@ public class LqMQListenerConfiguration implements BeanPostProcessor, Application
             registerMQListener(bean, method, listener);
         }
 
+        //启动
+        LQMQTemplate.start();
+
         return bean;
     }
 
@@ -64,7 +68,7 @@ public class LqMQListenerConfiguration implements BeanPostProcessor, Application
         }
 
         Class<?> parameterType = method.getParameterTypes()[0];
-        String key = LQKey.key(listener.key(),listener.version(),LQKey.ONE_DAY).buildKey();
+        String key = listener.topic();
 
         // 创建消息处理器
         ILQMessage<?> messageHandler = new ILQMessage<Object>() {
@@ -84,9 +88,7 @@ public class LqMQListenerConfiguration implements BeanPostProcessor, Application
         };
 
         // 根据不同的队列类型注册处理器
-        LingQueRedis redis = LingQueRedis.ofKey(key, LQKey.ONE_DAY);
-        redis.ofUnifiedQueue().consumer(java.util.Arrays.asList(messageHandler));
-        redis.ofStreamUnifiedQueue().consumer(java.util.Arrays.asList(messageHandler));
+        LQMQSubscriptionManager.getInstance().subscribe(key,messageHandler);
 
         log.info("Registered MQ listener for key: {}, method: {}",
             key, method.getName());

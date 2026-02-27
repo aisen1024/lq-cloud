@@ -1,6 +1,5 @@
 package cn.lingque.redis;
 import cn.lingque.base.LQKey;
-import cn.lingque.mq.exten.*;
 import cn.lingque.redis.exten.*;
 import io.lettuce.core.api.sync.RedisCommands;
 import lombok.extern.slf4j.Slf4j;
@@ -39,22 +38,6 @@ public class LingQueRedis extends BaseOpt{
 
     public ListOpt ofList(){
         return new ListOpt(this);
-    }
-
-    /**
-     * 获取统一消息队列实例
-     * @return 统一消息队列
-     */
-    public LQUnifiedQueue ofUnifiedQueue(){
-        return new LQUnifiedQueue(this);
-    }
-
-    /**
-     * 获取统一消息队列实例
-     * @return 统一消息队列
-     */
-    public LQStreamUnifiedQueue ofStreamUnifiedQueue(){
-        return new LQStreamUnifiedQueue<>(this);
     }
 
 

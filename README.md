@@ -1,511 +1,739 @@
-# LQ Cloud 项目文档
+# LQ-Cloud
 
-LQ Cloud 是一个基于 Redis 的高性能云框架，提供配置中心、消息队列、节点注册、RPC 调用等功能。经过重构，优化了性能和使用体验。
+> 基于 Redis + Spring Boot 3 的下一代轻量级微服务基础设施框架
 
-## 主要特性
-- 高性能配置中心
-- 统一消息队列支持
-- 增强版节点注册中心
-- 分布式 RPC 框架
-- MCP 工具管理
-- 模块化组件加载器
-- 灵活的配置管理
+[![Maven Central](https://img.shields.io/maven-central/v/io.github.aisen1024/lq-cloud)](https://central.sonatype.com/artifact/io.github.aisen1024/lq-cloud)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](http://www.apache.org/licenses/LICENSE-2.0)
+[![Java](https://img.shields.io/badge/Java-17%2B-orange)](https://openjdk.org/projects/jdk/17/)
+[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.2.x-green)](https://spring.io/projects/spring-boot)
 
-## 安装
-通过 Maven 引入依赖：
+---
+
+## 项目介绍
+
+**LQ-Cloud** 是一个以 Redis 为核心基础设施，面向 Spring Boot 3 微服务体系打造的轻量级云原生框架。它不依赖 Nacos、Eureka、RabbitMQ、Kafka 等中间件，仅通过 Redis 即可实现服务注册与发现、分布式消息队列、消息总线、RPC 远程调用、配置中心、分布式锁等企业级微服务能力。
+
+### 核心优势
+
+- **零依赖中间件**：所有分布式能力均基于 Redis 实现，无需额外部署 Nacos、Zookeeper、Kafka 等
+- **开箱即用**：引入依赖，配置 Redis 连接即可启动全部功能
+- **高性能**：基于 Lettuce 异步客户端，支持连接池、自动重试
+- **易扩展**：模块化设计，各功能模块独立可插拔
+
+---
+
+## 功能模块
+
+| 模块 | 说明 |
+|---|---|
+| Redis 增强操作 | String/Hash/Set/ZSet/List/Geo 结构化封装 |
+| 分布式锁 | 支持可重入、等待超时、延迟释放 |
+| 消息队列 (MQ) | 支持 List（顺序）/ ZSet（延迟）/ Stream（可靠）三种模式 |
+| 消息总线 (Bus) | 基于 Redis PubSub，支持异步、优先级、条件过滤 |
+| 服务注册与发现 | 基于 Redis，支持健康检查、多协议、标签路由 |
+| RPC 远程调用 | 支持负载均衡、熔断器、链路追踪、自动重试 |
+| HTTP 声明式客户端 | 类 Feign 风格，注解驱动 HTTP 调用 |
+| 配置中心 | 支持命名空间、版本管理、实时推送、变更监听 |
+| MCP 工具集成 | 支持 AI Agent MCP 工具注册与发现 |
+
+---
+
+## 快速开始
+
+### 1. 引入依赖
+
+在 `pom.xml` 中添加：
+
 ```xml
 <dependency>
     <groupId>io.github.aisen1024</groupId>
     <artifactId>lq-cloud</artifactId>
-    <version>1.1.0</version>
+    <version>1.1.8</version>
 </dependency>
 ```
 
-## 组件加载器
+### 2. 配置 Redis 连接
 
-### LqCloudRunner 组件加载器
-LQ Cloud 提供了 `LqCloudRunner` 组件加载器，用于统一管理和启动各个组件。
+在 `application.yml` 中添加：
 
-#### 基本使用
+```yaml
+ling-que:
+  ip: 127.0.0.1
+  port: 6379
+  password: your_password   # 无密码则删除此行
+  db: 0
+
+  # 服务节点信息（服务注册 / RPC 必填）
+  node:
+    server-name: my-service
+    server-host: 192.168.1.100
+    server-port: 8080
+
+  # 消息总线配置（可选）
+  bus:
+    server-name: my-service
+    enable: true
+```
+
+### 3. 启动应用
+
+正常启动 Spring Boot 应用，LQ-Cloud 自动完成 Redis 连接初始化、服务注册、MQ 启动等。
+
+---
+
+## Redis 增强操作
+
+LQ-Cloud 提供以 `LQKey` 为中心的链式 Redis 操作 API。
+
+### 定义 Key
+
 ```java
-@Configuration
-public class LQCloudConfig {
-    
-    @Bean
-    public LqCloudRunner lqCloudRunner(LQProperties lqProperties) {
-        return new LqCloudRunner(lqProperties);
+// 三要素：key前缀、版本号、TTL（秒，-1L 表示永不过期）
+LQKey USER_INFO = LQKey.key("USER:INFO", 1D, 3600L);
+```
+
+### String 操作
+
+```java
+// 构建操作实例
+LingQueRedis redis = LingQueRedis.ofKey(USER_INFO, userId);
+
+// 写入
+redis.ofValue().set("hello");
+
+// 读取
+String value = redis.ofValue().get();
+
+// 设置（不存在才写入）
+boolean success = redis.ofValue().setNx("value");
+
+// 原子递增
+Long count = redis.ofValue().incr();
+```
+
+### Hash 操作
+
+```java
+LingQueRedis redis = LingQueRedis.ofKey(USER_INFO, userId);
+
+// 写入 field
+redis.ofHash().hset("name", "aisen");
+
+// 读取 field
+String name = redis.ofHash().hget("name");
+
+// 读取整个 Hash（转为对象）
+UserInfo user = redis.ofHash().hgetAll(UserInfo.class);
+```
+
+### List 操作
+
+```java
+LingQueRedis redis = LingQueRedis.ofKey("ORDER:QUEUE", 30L);
+
+// 从左边推入
+redis.ofList().lpush("order1");
+
+// 从右边弹出
+String order = redis.ofList().rpop();
+
+// 获取列表长度
+Long size = redis.ofList().llen();
+```
+
+### Set / ZSet 操作
+
+```java
+// Set
+redis.ofSet().sadd("tag1", "tag2");
+Set<String> members = redis.ofSet().smembers();
+
+// ZSet（有序集合）
+redis.ofZSet().zadd(System.currentTimeMillis(), "member1");
+List<String> top10 = redis.ofZSet().zrange(0, 9);
+```
+
+### Geo 地理位置
+
+```java
+LingQueRedis redis = LingQueRedis.ofKey("GEO:STORE", -1L);
+
+// 添加位置
+redis.ofGeo().geoadd(116.397128, 39.916527, "store1");
+
+// 查询范围内成员
+List<String> nearby = redis.ofGeo().georadius(116.4, 39.9, 5.0, "km");
+```
+
+### 原始命令执行
+
+```java
+// 执行任意 Redis 命令
+redis.execBase(commands -> commands.lpush("my:key", "v1", "v2"));
+```
+
+---
+
+## 分布式锁
+
+基于 Redis `SET NX` 实现，支持可重入、等待自旋、延迟释放。
+
+```java
+LingQueRedis redis = LingQueRedis.ofKey("LOCK:ORDER", 30L);
+
+// 1. 尝试获取锁，失败立即返回
+redis.ofLock().lockFuture(
+    () -> { /* 业务逻辑 */ return result; },
+    () -> { /* 获取锁失败的处理 */ return null; }
+);
+
+// 2. 等待最多 5 秒获取锁
+redis.ofLock().lockFuture(5L, () -> {
+    // 业务逻辑
+    return result;
+});
+
+// 3. 执行完后延迟 3 秒释放锁（防止重复操作）
+redis.ofLock().lockFutureAndLazy(
+    () -> { return result; },
+    () -> { return null; },
+    3L   // 延迟释放秒数
+);
+
+// 4. 手动加锁 / 释放
+boolean locked = redis.ofLock().lock(false);
+if (locked) {
+    try {
+        // 业务逻辑
+    } finally {
+        redis.ofLock().unlock();
     }
 }
 ```
 
-#### 组件启动流程
-1. **配置检查** - 自动检查和补全服务配置
-2. **基础初始化** - 初始化 Redis 连接和线程池
-3. **注册中心启动** - 启动服务注册与发现
-4. **消息总线启动** - 启动集群消息总线（可选）
-5. **其他组件** - 根据配置启动其他组件
+---
 
-## 配置说明
+## 消息队列 (MQ)
 
-### 基础配置 (application.yml)
-```yaml
-server:
-  port: 8081                    # 应用服务端口
+LQ-Cloud MQ 无需部署 RabbitMQ/Kafka，完全基于 Redis 实现三种队列模式。
 
-spring:
-  application:
-    name: lq-cloud              # 应用名称，用作服务名
+### 队列类型对比
 
-# LQ Cloud 基础配置
-ling-que:
-  ip: 127.0.0.1                # Redis服务器IP地址
-  port: 6379                   # Redis服务器端口
-  db: 0                        # Redis数据库编号，默认0
-  username: default            # Redis用户名，默认default
-  password:                    # Redis密码，默认为空
-  maxTotal: 50                 # Redis连接池最大连接数
-  maxIdle: 20                  # Redis连接池最大空闲连接数
-  minIdle: 10                  # Redis连接池最小空闲连接数
-  maxWaitMillis: -1            # 获取连接最大等待时间(毫秒)，-1表示无限等待
-  timeout: 10000               # Redis连接超时时间(毫秒)
-  timeBetweenEvictionRuns: 100 # 空闲连接检查间隔时间(毫秒)
-  minEvictableIdleTimeMillis: 60000  # 连接最小空闲时间(毫秒)
-  
-  # 模式配置
-  mode: standalone             # Redis模式：standalone(单机)/cluster(集群)/sentinel(哨兵)
-  
-  # 哨兵模式配置
-  sentinel:
-    master: mymaster           # 哨兵主节点名称
-    nodes:                     # 哨兵节点列表
-      - 127.0.0.1:26379
-      - 127.0.0.1:26380
-      - 127.0.0.1:26381
-  
-  # 集群模式配置
-  cluster:
-    nodes:                     # 集群节点列表
-      - 127.0.0.1:7000
-      - 127.0.0.1:7001
-      - 127.0.0.1:7002
-    maxRedirects: 3            # 最大重定向次数
-  
-  # 线程池配置
-  masterPool:                  # 主线程池配置
-    corePoolSize: 10           # 核心线程数
-    maximumPoolSize: 20        # 最大线程数
-    keepAliveTime: 60          # 线程空闲存活时间(秒)
-    queueCapacity: 1000        # 队列容量
-    threadNamePrefix: "LQ-Master-"  # 线程名前缀
-  
-  slavePool:                   # 辅助线程池配置
-    corePoolSize: 5            # 核心线程数
-    maximumPoolSize: 10        # 最大线程数
-    keepAliveTime: 60          # 线程空闲存活时间(秒)
-    queueCapacity: 500         # 队列容量
-    threadNamePrefix: "LQ-Slave-"   # 线程名前缀
-  
-  # 服务节点配置
-  server:
-    serverName: ${spring.application.name}  # 服务名称，默认使用应用名
-    serverHost:                # 服务主机IP，默认自动获取本机IP
-    serverPort: ${server.port} # 服务端口，默认使用应用端口
-  
-  # 消息总线配置
-  bus:
-    enable: true               # 是否启用消息总线
-    
-  # 配置中心配置
-  config:
-    dataIds:                   # 配置文件ID列表
-      - dataId: "app-config"   # 配置文件ID
-        group: "DEFAULT_GROUP" # 配置分组
-        type: "yaml"           # 配置文件类型：yaml/json/properties
-```
+| 类型 | Redis 结构 | 特点 | 适用场景 |
+|---|---|---|---|
+| `LIST` | List | 顺序消费、高性能 | 日志收集、简单通知 |
+| `ZSET` | ZSet | 支持延迟、可取消 | 订单超时、定时提醒 |
+| `STREAM` | Stream | ACK 确认、消息持久化 | 支付回调、可靠业务消息 |
 
-### 控制台配置
-```yaml
-lq:
-  console:
-    enabled: true              # 是否启用控制台，默认true
-    port: 8080                 # 控制台端口，默认8080
-    contextPath: /lq-console   # 控制台访问路径前缀
-    
-    # 安全配置
-    security:
-      username: admin          # 控制台登录用户名
-      password: admin123       # 控制台登录密码
-      sessionTimeout: 1800     # 会话超时时间(秒)，默认30分钟
-      enableCsrf: false        # 是否启用CSRF保护
-      allowedIps:              # 允许访问的IP列表，空表示允许所有
-        - 127.0.0.1
-        - 192.168.1.0/24
-    
-    # 会话配置
-    session:
-      cookieName: "LQ_SESSION" # 会话Cookie名称
-      cookiePath: "/"          # Cookie路径
-      cookieMaxAge: 1800       # Cookie最大存活时间(秒)
-      cookieSecure: false      # 是否仅HTTPS传输Cookie
-      cookieHttpOnly: true     # 是否仅HTTP访问Cookie
-```
+### 方式一：注解驱动（推荐）
 
-### 增强版配置中心
-```yaml
-lq:
-  config:
-    enhanced:
-      enabled: true                    # 是否启用增强版配置中心
-      autoCleanup: true               # 是否自动清理过期配置
-      cleanupInitialDelay: 60         # 清理任务初始延迟(秒)
-      cleanupInterval: 300            # 清理任务执行间隔(秒)，默认5分钟
-      defaultTtl: 1800000            # 默认配置TTL(毫秒)，默认30分钟
-      maxConfigCount: 10000          # 最大配置数量限制
-      maxNamespaceCount: 100         # 最大命名空间数量限制
-      enableStats: true              # 是否启用统计信息
-      statsInterval: 600             # 统计信息打印间隔(秒)，默认10分钟
-      enableChangeLog: true          # 是否启用配置变更日志
-      enableConfigPush: true         # 是否启用配置推送
-      configPushEvent: "lq:config:push"  # 配置推送事件名称
-      
-      # 初始配置列表
-      initialConfigs:
-        - namespace: "default"        # 命名空间
-          key: "app.name"            # 配置键
-          value: "lq-cloud"          # 配置值
-          ttl: 3600000               # TTL(毫秒)
-        - namespace: "database"
-          key: "url"
-          value: "jdbc:mysql://localhost:3306/test"
-          ttl: -1                    # -1表示永不过期
-```
+**Step 1：定义监听器**
 
-### MCP 工具配置
-```yaml
-lq:
-  mcp:
-    enabled: true                      # 是否启用MCP工具模块
-    autoDiscovery: true               # 是否启用自动发现工具
-    healthCheck: true                 # 是否启用健康检查
-    scanPackages:                     # 工具扫描包路径列表
-      - cn.lingque
-      - com.example.tools
-    
-    # 服务器配置
-    server:
-      enabled: true                   # 是否启用MCP服务器
-      port: 8090                      # 服务器监听端口
-      host: 0.0.0.0                   # 服务器绑定主机，0.0.0.0表示所有接口
-      maxConnections: 100             # 最大并发连接数
-      connectionTimeout: 30000        # 连接超时时间(毫秒)
-      requestTimeout: 60000           # 请求处理超时时间(毫秒)
-      
-      # 线程池配置
-      threadPool:
-        coreSize: 10                  # 核心线程数
-        maxSize: 50                   # 最大线程数
-        queueCapacity: 1000           # 队列容量
-        keepAliveSeconds: 60          # 线程空闲存活时间(秒)
-    
-    # 客户端配置
-    client:
-      enabled: false                  # 是否启用MCP客户端
-      serverHost: localhost           # 目标服务器主机
-      serverPort: 8080               # 目标服务器端口
-      connectTimeout: 5000           # 连接超时时间(毫秒)
-      readTimeout: 30000             # 读取超时时间(毫秒)
-      retryCount: 3                  # 重试次数
-      retryInterval: 1000            # 重试间隔(毫秒)
-    
-    # 注册中心配置
-    registry:
-      enabled: true                   # 是否启用注册中心
-      address: localhost:6379         # 注册中心地址(Redis)
-      serviceName: mcp-tools          # 服务名称
-      serviceVersion: 1.0.0           # 服务版本
-      heartbeatInterval: 30000        # 心跳间隔(毫秒)
-      weight: 100                     # 服务权重(1-1000)
-      tags:                           # 服务标签
-        - production
-        - mcp-tools
-      metadata:                       # 服务元数据
-        region: "us-west-1"
-        zone: "zone-a"
-    
-    # 工具配置
-    tools:
-      # 自定义工具配置
-      customTool:
-        enabled: true                 # 是否启用该工具
-        timeout: 30000               # 工具执行超时时间(毫秒)
-        retryCount: 2                # 重试次数
-        cacheEnabled: true           # 是否启用结果缓存
-        cacheTtl: 300000            # 缓存TTL(毫秒)
-```
-
-### RPC 分布式调用配置
-```yaml
-lq:
-  rpc:
-    enabled: true                      # 是否启用RPC框架
-    
-    # 服务端配置
-    server:
-      port: 9090                      # RPC服务端口
-      host: 0.0.0.0                   # 服务绑定主机
-      maxConnections: 200             # 最大连接数
-      requestTimeout: 30000           # 请求超时时间(毫秒)
-      
-      # 线程池配置
-      threadPool:
-        coreSize: 20                  # 核心线程数
-        maxSize: 100                  # 最大线程数
-        queueCapacity: 2000           # 队列容量
-    
-    # 客户端配置
-    client:
-      connectTimeout: 5000            # 连接超时时间(毫秒)
-      readTimeout: 30000             # 读取超时时间(毫秒)
-      retryCount: 3                  # 重试次数
-      retryInterval: 1000            # 重试间隔(毫秒)
-      
-      # 负载均衡配置
-      loadBalance:
-        strategy: ROUND_ROBIN         # 负载均衡策略：ROUND_ROBIN/RANDOM/WEIGHTED_ROUND_ROBIN/LEAST_CONNECTIONS/CONSISTENT_HASH
-        healthCheckInterval: 30000    # 健康检查间隔(毫秒)
-        
-      # 熔断器配置
-      circuitBreaker:
-        enabled: true                 # 是否启用熔断器
-        failureThreshold: 5           # 失败阈值
-        recoveryTimeout: 60000        # 恢复超时时间(毫秒)
-        halfOpenMaxCalls: 3           # 半开状态最大调用次数
-```
-
-### HTTP 客户端配置
-```yaml
-lq:
-  http:
-    enabled: true                      # 是否启用HTTP客户端，默认true
-    
-    # 连接池配置
-    pool:
-      maxTotal: 200                   # 最大连接数
-      maxPerRoute: 50                 # 每个路由最大连接数
-      connectTimeout: 5000            # 连接超时时间(毫秒)
-      socketTimeout: 30000            # Socket超时时间(毫秒)
-      connectionRequestTimeout: 3000   # 从连接池获取连接超时时间(毫秒)
-      
-    # 重试配置
-    retry:
-      enabled: true                   # 是否启用重试
-      maxRetries: 3                   # 最大重试次数
-      retryInterval: 1000             # 重试间隔(毫秒)
-      
-    # 代理配置
-    proxy:
-      enabled: false                  # 是否启用代理
-      host: proxy.example.com         # 代理主机
-      port: 8080                      # 代理端口
-      username:                       # 代理用户名
-      password:                       # 代理密码
-```
-
-### 消息队列配置
-```yaml
-lq:
-  mq:
-    enabled: true                      # 是否启用消息队列
-    
-    # 监听器配置
-    listener:
-      pollInterval: 10                # 轮询间隔(毫秒)
-      batchSize: 100                  # 批量处理大小
-      maxRetries: 3                   # 最大重试次数
-      retryInterval: 1000             # 重试间隔(毫秒)
-      
-    # 延迟队列配置
-    delay:
-      enabled: true                   # 是否启用延迟队列
-      pollInterval: 500               # 延迟队列轮询间隔(毫秒)
-      maxDelayTime: 86400000          # 最大延迟时间(毫秒)，默认24小时
-      
-    # 死信队列配置
-    deadLetter:
-      enabled: true                   # 是否启用死信队列
-      maxRetries: 5                   # 最大重试次数
-      ttl: 604800000                  # 死信消息TTL(毫秒)，默认7天
-```
-
-## 使用案例
-
-### 配置中心示例
 ```java
-// 获取配置
-String value = LQEnhancedConfigCenter.getConfig("namespace", "key");
+@Component
+public class OrderListener {
 
-// 设置配置
-LQEnhancedConfigCenter.setConfig("namespace", "key", "value", 3600000L); // TTL 1小时
+    // 顺序消息监听
+    @LqMQListener(topic = "order:created")
+    public void onOrderCreated(String message) {
+        // 处理订单创建消息
+    }
 
-// 监听配置变更
-LQEnhancedConfigCenter.addListener("namespace", "key", event -> {
-    log.info("配置变更: {} = {}", event.getKey(), event.getNewValue());
+    // 延迟/ZSet消息监听
+    @LqMQListener(topic = "order:timeout")
+    public void onOrderTimeout(String message) {
+        // 处理订单超时
+    }
+}
+```
+
+**Step 2：发送消息**
+
+```java
+@Autowired
+private LQMQTemplate mqTemplate;
+
+// 发送顺序消息（List队列）
+mqTemplate.sendOrderMessage("order:created", orderObject);
+
+// 发送延迟消息（ZSet队列，3600秒后触发）
+mqTemplate.sendDelayMessage("order:timeout", orderObject, 3600L);
+
+// 发送可靠消息（Stream队列）
+mqTemplate.sendStreamMessage("order:payment", paymentObject);
+```
+
+### 方式二：编程式订阅
+
+```java
+// 订阅主题
+LQMQTemplate.subscribe("order:created", new ILQMessage<Order>() {
+    @Override
+    public void handle(Order order) {
+        // 处理消息
+    }
+    @Override
+    public Class<Order> getEntityClass() {
+        return Order.class;
+    }
+});
+
+// 启动 MQ（应用启动时调用一次）
+LQMQTemplate.start();
+```
+
+### 消息取消
+
+```java
+// 发送延迟消息并获取消息 ID
+String msgId = LQMQTemplate.sendDelayMessage("order:timeout", order, 3600L);
+
+// 用户支付后取消超时消息
+LQMQTemplate.cancelMessage(msgId);
+
+// 查询是否已取消
+boolean cancelled = LQMQTemplate.isCancelled(msgId);
+```
+
+---
+
+## 消息总线 (Bus)
+
+消息总线用于同服务或跨服务的事件广播，基于 Redis PubSub 实现。
+
+### 发布消息
+
+```java
+// 广播到所有订阅者
+LQEnhancedBus.publish("user:login", userEvent);
+
+// 发送到指定服务组
+LQEnhancedBus.publishToGroup("user:login", userEvent, "auth-service");
+```
+
+### 订阅消息（注解方式）
+
+```java
+@Component
+public class UserEventHandler {
+
+    @LQEnhancedBusListener(
+        topic = "user:login",
+        async = true,             // 异步处理
+        priority = 1,             // 优先级（越小越先执行）
+        errorStrategy = LQEnhancedBusListener.ErrorHandleStrategy.RETRY,
+        maxRetries = 3
+    )
+    public void onUserLogin(EnhancedBusMessage message) {
+        UserEvent event = message.getBody(UserEvent.class);
+        // 处理登录事件
+    }
+
+    // 带条件过滤（SpEL 表达式）
+    @LQEnhancedBusListener(
+        topic = "order:status",
+        condition = "#message.type == 'PAID'",
+        serviceGroup = "order-service"
+    )
+    public void onOrderPaid(EnhancedBusMessage message) {
+        // 只处理支付成功的订单事件
+    }
+}
+```
+
+### 错误处理策略
+
+| 策略 | 说明 |
+|---|---|
+| `LOG` | 仅记录日志（默认） |
+| `RETRY` | 自动重试（配合 `maxRetries` 和 `retryInterval`） |
+| `IGNORE` | 忽略错误 |
+| `THROW` | 抛出异常 |
+
+---
+
+## 服务注册与发现
+
+LQ-Cloud 内置基于 Redis 的服务注册中心，无需 Nacos 或 Eureka。
+
+### 配置
+
+```yaml
+ling-que:
+  node:
+    server-name: order-service
+    server-host: 192.168.1.100
+    server-port: 8080
+```
+
+### 服务发现
+
+```java
+// 获取指定服务的所有节点
+List<LQEnhancedNodeInfo> nodes = LQEnhancedRegisterCenter.getServiceNodes("order-service");
+
+// 获取健康节点
+List<LQEnhancedNodeInfo> healthyNodes = LQEnhancedRegisterCenter.getHealthyNodes("order-service");
+
+// 获取所有已注册服务列表
+Set<String> services = LQEnhancedRegisterCenter.getAllServices();
+```
+
+服务注册中心特性：
+- 自动心跳维持，节点宕机自动摘除
+- 支持多协议（HTTP / Socket / gRPC / MCP）
+- 支持标签路由、服务分组
+- 支持负载信息上报和智能调度
+
+---
+
+## RPC 远程调用
+
+基于增强版注册中心，无需 Dubbo 即可实现跨服务调用，内置负载均衡与熔断保护。
+
+### 定义服务接口
+
+```java
+@LQService(
+    value = "OrderService",
+    version = "1.0.0",
+    group = "default",
+    timeout = 5000,
+    loadBalance = true,
+    circuitBreaker = true
+)
+public interface OrderService {
+
+    @LQServiceMethod(timeout = 3000, retryCount = 2)
+    OrderVO getOrder(String orderId);
+
+    @LQServiceMethod(async = true)
+    void createOrder(CreateOrderRequest request);
+}
+```
+
+### 服务消费端调用
+
+```java
+// 获取服务代理（自动负载均衡 + 熔断）
+OrderService orderService = LQDistributedServiceCaller.createServiceProxy(OrderService.class);
+
+// 像调用本地方法一样调用远程服务
+OrderVO order = orderService.getOrder("ORDER-001");
+```
+
+### 核心特性
+
+- **负载均衡**：支持轮询、随机、权重等策略
+- **熔断器**：失败率达到阈值自动开启熔断，防止雪崩
+- **链路追踪**：自动生成 TraceId，支持跨服务追踪
+- **自动重试**：可配置重试次数，支持幂等接口
+- **多协议**：默认 HTTP，扩展支持 Socket/gRPC
+
+---
+
+## HTTP 声明式客户端
+
+类 Feign 风格，通过注解定义 HTTP 接口，自动整合服务发现与负载均衡。
+
+### 定义 HTTP 客户端
+
+```java
+@HttpClient(
+    serviceName = "user-service",   // 服务名（自动发现）
+    connectTimeout = 3000,
+    readTimeout = 10000,
+    loadBalance = true
+)
+public interface UserHttpClient {
+
+    @Get("/api/user/{id}")
+    UserVO getUser(@PathVariable("id") String id);
+
+    @Post("/api/user")
+    UserVO createUser(@RequestBody CreateUserRequest request);
+
+    @Put("/api/user/{id}")
+    UserVO updateUser(@PathVariable("id") String id, @RequestBody UpdateUserRequest request);
+
+    @Delete("/api/user/{id}")
+    void deleteUser(@PathVariable("id") String id);
+
+    @Get("/api/users")
+    List<UserVO> listUsers(@RequestParam("page") int page, @RequestParam("size") int size);
+}
+```
+
+### 注入使用
+
+```java
+// 使用 @LqService 注解自动注入
+@LqService(serviceName = "user-service")
+private UserHttpClient userHttpClient;
+
+// 直接调用
+UserVO user = userHttpClient.getUser("user-001");
+```
+
+---
+
+## 配置中心
+
+LQ-Cloud 内置轻量级配置中心，支持命名空间、版本管理和实时推送。
+
+### 写入配置
+
+```java
+// 写入默认命名空间
+LQEnhancedConfigCenter.setConfig("app.timeout", "5000");
+
+// 写入指定命名空间
+LQEnhancedConfigCenter.setConfig("production", "db.pool.size", "50");
+
+// 写入对象配置
+LQEnhancedConfigCenter.setConfigObject("app.datasource", dataSourceConfig);
+```
+
+### 读取配置
+
+```java
+// 获取字符串
+String timeout = LQEnhancedConfigCenter.getConfig("app.timeout");
+
+// 获取并转换类型（带默认值）
+Integer poolSize = LQEnhancedConfigCenter.getConfig("db.pool.size", 10, Integer.class);
+
+// 获取对象
+DataSourceConfig config = LQEnhancedConfigCenter.getConfigObject("app.datasource", DataSourceConfig.class);
+```
+
+### 配置变更监听
+
+```java
+// 注册变更监听器
+LQEnhancedConfigCenter.addListener("app.timeout", event -> {
+    System.out.println("配置变更：" + event.getOldValue() + " -> " + event.getNewValue());
+    // 动态刷新应用配置
 });
 ```
 
-### 消息队列示例
-使用 @LqMQListener 注解：
+### 配置统计
+
 ```java
-@LqMQListener(key = "user.message", type = LqMqType.UNIFIED)
-public void handleUserMessage(UserMessage message) {
-    // 处理消息
-}
+// 获取配置统计信息
+ConfigStats stats = LQEnhancedConfigCenter.getStats();
+System.out.println("配置总数: " + stats.getTotalConfigs());
+System.out.println("命名空间数: " + stats.getNamespaceCount());
 ```
 
-### RPC 调用示例
-```java
-// 服务接口
-@LQService(name = "userService")
-public interface UserService {
-    @LQServiceMethod
-    User getUserById(Long id);
-}
+---
 
-// 调用
-UserService userService = LQDistributedServiceCaller.createProxy(UserService.class);
-User user = userService.getUserById(1L);
-```
+## MCP 工具集成（AI Agent）
 
-### MCP 工具使用示例
+LQ-Cloud 支持将 Spring Bean 注册为 MCP（Model Context Protocol）工具，供 AI Agent 调用。
+
+### 定义 MCP 工具
+
 ```java
-// 注册MCP工具
-@Component
-public class CustomMCPTool {
-    
-    @LQMCPTool(name = "customTool", description = "自定义工具")
-    public String executeCustomLogic(String input) {
-        return "处理结果: " + input;
+@MCPTool(
+    name = "order-tool",
+    description = "订单管理工具",
+    version = "1.0.0",
+    capabilities = {"query", "create", "cancel"},
+    tags = {"order", "e-commerce"}
+)
+public class OrderMCPTool {
+
+    @MCPToolMethod
+    public OrderVO queryOrder(String orderId) {
+        // 查询订单逻辑
+        return orderService.getOrder(orderId);
+    }
+
+    @MCPToolMethod
+    public String cancelOrder(String orderId, String reason) {
+        // 取消订单逻辑
+        orderService.cancel(orderId, reason);
+        return "success";
     }
 }
-
-// 调用MCP工具
-LQMCPToolHandler toolHandler = applicationContext.getBean(LQMCPToolHandler.class);
-String result = toolHandler.executeTool("customTool", "测试输入");
 ```
 
-## 组件启动顺序
+MCP 工具会自动注册到服务注册中心，其他服务或 AI Agent 可通过服务发现找到并调用。
 
-1. **Redis 连接初始化** - 建立 Redis 连接池
-2. **线程池初始化** - 创建主线程池和辅助线程池
-3. **服务注册中心** - 启动节点注册和服务发现
-4. **消息总线** - 启动集群消息总线和精准消息总线
-5. **配置中心** - 启动增强版配置中心（如果启用）
-6. **控制台** - 启动管理控制台（如果启用）
-7. **MCP 工具** - 启动 MCP 工具服务器（如果启用）
-8. **RPC 框架** - 启动分布式 RPC 服务（如果启用）
+---
 
-## 性能对比
+## 线程池工具
 
-### MQ 队列重构前后对比
-- **监听机制**:
-  - 旧: 全局 50ms 轮询所有队列
-  - 新: 每个队列独立 10ms 监听 (快 5 倍)，延迟队列统一 500ms 处理
-- **资源消耗**:
-  - CPU: 避免无意义轮询，只处理有消息队列
-  - 内存: 独立状态管理，避免全局竞争
-  - 线程: 按需启动，不使用队列不消耗资源
-- **整体提升**: 响应时间减少 80%，资源利用率提高 50% (基于内部基准测试)
+LQ-Cloud 提供托管线程池，统一管理异步任务。
 
-## 最佳实践
+```java
+// 提交主线程池任务
+LQThreadUtil.execute(() -> {
+    // 异步业务逻辑
+});
 
-### 1. 配置管理
-- 使用命名空间隔离不同环境的配置
-- 合理设置配置TTL，避免内存泄漏
-- 启用配置变更监听，实现动态配置更新
+// 使用辅助线程池
+LQThreadUtil.executeSlave(() -> {
+    // 低优先级后台任务
+});
+```
 
-### 2. 服务注册
-- 确保服务名称唯一性
-- 配置合适的心跳间隔
-- 使用标签进行服务分组
+线程池配置：
 
-### 3. 消息队列
-- 合理设置队列监听间隔
-- 使用延迟队列处理定时任务
-- 避免消息积压，及时处理消息
-
-### 4. RPC 调用
-- 配置合适的超时时间
-- 使用负载均衡策略
-- 启用熔断器防止雪崩
-
-### 5. MCP 工具
-- 合理设置工具扫描包路径
-- 启用健康检查监控工具状态
-- 使用注册中心实现工具发现
-
-## 故障排查
-
-### 常见问题
-
-1. **Redis 连接失败**
-   - 检查 Redis 服务是否启动
-   - 验证连接配置（IP、端口、密码）
-   - 检查网络连通性
-
-2. **服务注册失败**
-   - 确认服务名称配置正确
-   - 检查端口是否被占用
-   - 验证 Redis 连接状态
-
-3. **配置中心无法获取配置**
-   - 检查命名空间和配置键是否正确
-   - 验证配置是否已过期
-   - 确认配置中心是否启用
-
-4. **MCP 工具调用失败**
-   - 检查工具是否已注册
-   - 验证工具服务器是否启动
-   - 确认工具参数格式正确
-
-### 日志配置
 ```yaml
-logging:
-  level:
-    cn.lingque: DEBUG
-    cn.lingque.cloud: INFO
-    cn.lingque.runner: INFO
-    cn.lingque.mcp: DEBUG
-    cn.lingque.rpc: INFO
+ling-que:
+  master-pool:
+    core-pool-size: 10
+    max-pool-size: 50
+    queue-capacity: 1000
+  slave-pool:
+    core-pool-size: 5
+    max-pool-size: 20
+    queue-capacity: 500
 ```
 
-## 配置参数总结
+---
 
-### 核心配置参数
-| 参数 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `ling-que.ip` | String | localhost | Redis服务器IP |
-| `ling-que.port` | String | 6379 | Redis服务器端口 |
-| `ling-que.password` | String | null | Redis密码 |
-| `ling-que.maxTotal` | int | 50 | 连接池最大连接数 |
-| `ling-que.timeout` | int | 10000 | 连接超时时间(毫秒) |
+## 完整配置参考
 
-### 组件开关参数
-| 参数 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `lq.console.enabled` | boolean | true | 控制台开关 |
-| `lq.config.enhanced.enabled` | boolean | true | 增强配置中心开关 |
-| `lq.mcp.enabled` | boolean | true | MCP工具开关 |
-| `lq.rpc.enabled` | boolean | false | RPC框架开关 |
-| `lq.http.enabled` | boolean | true | HTTP客户端开关 |
+```yaml
+ling-que:
+  # Redis 连接
+  ip: 127.0.0.1
+  port: 6379
+  db: 0
+  username: default
+  password: ""
+  max-total: 50
+  max-idle: 20
+  min-idle: 10
+  timeout: 10000
 
-### 性能调优参数
-| 参数 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `ling-que.masterPool.corePoolSize` | int | 10 | 主线程池核心线程数 |
-| `ling-que.masterPool.maximumPoolSize` | int | 20 | 主线程池最大线程数 |
-| `lq.mq.listener.pollInterval` | int | 10 | MQ轮询间隔(毫秒) |
-| `lq.config.enhanced.cleanupInterval` | long | 300 | 配置清理间隔(秒) |
+  # 部署模式：standalone（单机）| sentinel（哨兵）| cluster（集群）
+  mode: standalone
 
-更多示例见 src/test/java 中的测试类，如 LQEnhancedConfigExample.java、LQMCPToolUsageExample.java 等。
+  # 哨兵模式配置
+  sentinel:
+    master: mymaster
+    sentinel-nodes:
+      - 127.0.0.1:26379
+      - 127.0.0.1:26380
 
-更多性能细节见 src/main/java/cn/lingque/mq/README_MQ_REFACTOR.md。
+  # 集群模式配置
+  cluster:
+    cluster-nodes:
+      - 127.0.0.1:7001
+      - 127.0.0.1:7002
+      - 127.0.0.1:7003
+
+  # 服务节点配置
+  node:
+    server-name: my-service
+    server-host: 192.168.1.100
+    server-port: 8080
+
+  # 消息总线
+  bus:
+    server-name: my-service
+    enable: true
+
+  # 配置中心
+  config:
+    namespace: default
+    refresh-interval: 30000
+```
+
+---
+
+## 项目结构
+
+```
+lq-cloud
+├── cn.lingque
+│   ├── base
+│   │   └── LQKey.java                     # Redis Key 定义基类
+│   ├── redis
+│   │   ├── LingQueRedis.java              # Redis 增强操作入口
+│   │   ├── JedisProxy.java                # Lettuce 连接代理
+│   │   └── exten
+│   │       ├── ValueOpt.java              # String 操作
+│   │       ├── HashOpt.java               # Hash 操作
+│   │       ├── SetOpt.java                # Set 操作
+│   │       ├── SortedSetOpt.java          # ZSet 操作
+│   │       ├── ListOpt.java               # List 操作
+│   │       ├── GeoOpt.java                # Geo 地理位置操作
+│   │       └── LockOpt.java               # 分布式锁
+│   ├── mq
+│   │   ├── LQMQTemplate.java              # MQ 统一操作模板
+│   │   ├── LQMQType.java                  # MQ 类型枚举
+│   │   └── core
+│   │       ├── ListMQ.java                # 顺序消息队列
+│   │       ├── ZSetMQ.java                # 延迟消息队列
+│   │       ├── StreamMQ.java              # 可靠流式消息队列
+│   │       ├── LQMQStarter.java           # MQ 启动器
+│   │       ├── LQMQSubscriptionManager.java # 订阅管理器
+│   │       └── MessageCancellationHandler.java # 消息取消处理器
+│   ├── bus
+│   │   └── enhanced
+│   │       ├── LQEnhancedBus.java         # 增强版消息总线
+│   │       └── annotation
+│   │           └── LQEnhancedBusListener.java # 消息监听注解
+│   ├── cloud
+│   │   ├── node
+│   │   │   ├── LQEnhancedRegisterCenter.java  # 服务注册中心
+│   │   │   └── LQRegisterCenter.java          # 基础注册中心
+│   │   ├── rpc
+│   │   │   ├── LQDistributedServiceCaller.java # 分布式服务调用器
+│   │   │   ├── annotation
+│   │   │   │   ├── LQService.java             # 服务注解
+│   │   │   │   └── LQServiceMethod.java        # 方法注解
+│   │   │   ├── circuit
+│   │   │   │   └── LQCircuitBreaker.java      # 熔断器
+│   │   │   └── loadbalance
+│   │   │       └── LQLoadBalancer.java        # 负载均衡器
+│   │   ├── http
+│   │   │   ├── annotation
+│   │   │   │   ├── HttpClient.java            # HTTP 客户端注解
+│   │   │   │   ├── Get.java / Post.java ...   # HTTP 方法注解
+│   │   │   │   └── PathVariable.java / RequestParam.java ...
+│   │   │   └── proxy
+│   │   │       └── HttpClientProxyFactory.java # 动态代理工厂
+│   │   ├── config
+│   │   │   └── enhanced
+│   │   │       └── LQEnhancedConfigCenter.java # 配置中心
+│   │   └── mcp
+│   │       ├── annotation
+│   │       │   ├── MCPTool.java               # MCP 工具注解
+│   │       │   └── MCPToolMethod.java          # MCP 方法注解
+│   │       └── server
+│   │           └── LQMCPToolServer.java        # MCP 服务端
+│   └── thread
+│       ├── LQThread.java                  # 线程封装
+│       └── LQThreadUtil.java              # 线程池工具
+```
+
+---
+
+## 依赖说明
+
+| 依赖 | 版本 | 说明 |
+|---|---|---|
+| Spring Boot | 3.2.4 | 基础框架 |
+| Lettuce | 6.3.2.RELEASE | Redis 异步客户端 |
+| Hutool | 5.8.16 | Java 工具库 |
+| Lombok | 1.18.28 | 代码简化 |
+
+---
+
+## 开发者
+
+- **作者**：liming.zheng（aisen1024）
+- **邮箱**：aisen1024@163.com
+- **GitHub**：[https://github.com/aisen1024/lq-cloud](https://github.com/aisen1024/lq-cloud)
+
+---
+
+## License
+
+[Apache License 2.0](http://www.apache.org/licenses/LICENSE-2.0)

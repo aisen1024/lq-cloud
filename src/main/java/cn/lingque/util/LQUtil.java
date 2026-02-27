@@ -69,6 +69,9 @@ public class LQUtil<T>{
      * @return
      */
     public static String toJson(Object source){
+        if (isBaseValue(source)){
+            return source.toString();
+        }
        return JSONUtil.toJsonStr(source);
     }
 

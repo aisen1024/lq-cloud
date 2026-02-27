@@ -6,7 +6,7 @@
 
     <groupId>io.github.aisen1024</groupId>
     <artifactId>lq-cloud</artifactId>
-    <version>1.1.6</version>
+    <version>1.1.8</version>
     <packaging>jar</packaging>
     <description>spring cloud 下一代微服务架构</description>
     <url>https://github.com/aisen1024/lq-cloud</url>

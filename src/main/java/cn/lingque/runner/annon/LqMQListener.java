@@ -1,6 +1,5 @@
 package cn.lingque.runner.annon;
 
-import cn.lingque.runner.enums.LqMqType;
 import java.lang.annotation.*;
 
 /**
@@ -13,10 +12,5 @@ public @interface LqMQListener {
     /**
      * 队列key
      */
-    String key();
-
-    /**
-     * 版本
-     */
-    double version() default 1.0;
+    String topic();
 }

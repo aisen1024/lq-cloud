@@ -1,4 +1,4 @@
-package cn.lingque.mq.exten.itf;
+package cn.lingque.mq.itf;
 
 /**
  * @author aisen

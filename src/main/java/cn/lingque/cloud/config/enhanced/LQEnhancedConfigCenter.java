@@ -3,7 +3,7 @@ package cn.lingque.cloud.config.enhanced;
 import cn.lingque.base.LQKey;
 import cn.lingque.util.LQUtil;
 import cn.hutool.json.JSONUtil;
-import cn.lingque.runner.annon.LqEvenBus;
+import cn.lingque.bus.enhanced.annotation.LQEnhancedBusListener;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -305,7 +305,7 @@ public class LQEnhancedConfigCenter {
     /**
      * 事件总线监听配置推送
      */
-    @LqEvenBus(even = "lq:config:push")
+    @LQEnhancedBusListener(topic = "lq:config:push")
     public void onConfigPush(String configData) {
         try {
             // 解析配置数据（支持JSON格式）

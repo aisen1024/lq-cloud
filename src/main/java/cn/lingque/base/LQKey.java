@@ -2,9 +2,6 @@ package cn.lingque.base;
 
 import cn.hutool.core.date.DateField;
 import cn.hutool.core.date.DateUtil;
-
-import cn.lingque.mq.exten.LQStreamUnifiedQueue;
-import cn.lingque.mq.exten.LQUnifiedQueue;
 import cn.lingque.redis.LingQueRedis;
 import cn.lingque.redis.exten.*;
 import lombok.Getter;
@@ -84,13 +81,6 @@ public class LQKey<T> {
     }
 
 
-    public LQUnifiedQueue<T> ofUnifiedQueue(Object... params) {
-        return new LQUnifiedQueue<>(rd(params));
-    }
-
-    public LQStreamUnifiedQueue<T> ofStreamUnifiedQueue(Object... params) {
-        return new LQStreamUnifiedQueue<>(rd(params));
-    }
 
 
     /**

@@ -60,6 +60,9 @@ public class LQEnhancedBusConfiguration implements BeanPostProcessor {
                 registerBusListener(bean, method, listener);
             }
         }
+
+        //启动bus
+        startEnhancedBus();
         
         return bean;
     }

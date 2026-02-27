@@ -1,9 +1,9 @@
 package cn.lingque.runner;
 
-import cn.hutool.crypto.digest.MD5;
-import cn.hutool.json.JSONUtil;
-import cn.lingque.bus.LQBus;
+import cn.lingque.bus.enhanced.LQEnhancedBus;
+import cn.lingque.cloud.node.LQEnhancedRegisterCenter;
 import cn.lingque.cloud.node.LQRegisterCenter;
+import cn.lingque.cloud.node.bean.LQEnhancedNodeInfo;
 import cn.lingque.cloud.node.bean.LQNodeInfo;
 import cn.lingque.config.LQProperties;
 import cn.lingque.redis.JedisProxy;
@@ -33,14 +33,12 @@ public class LqCloudRunner {
         doInit(lqProperties);
 
         //启动注册中心
-        LQNodeInfo node = startRegisterCenter(lqProperties);
+        startRegisterCenter(lqProperties);
 
-        //启动消息总线
+        //启动增强版消息总线
         if (lqProperties.getBus().getEnable()){
-            //集群消息总线
-            LQBus.startBus(lqProperties.getServer().getServerName());
-            //精准消息总线
-            LQBus.startBus(lqProperties.getServer().getServerName()+":"+ MD5.create().digestHex16(JSONUtil.toJsonStr(node)));
+            LQEnhancedNodeInfo enhancedNode = LQEnhancedRegisterCenter.currentEnhancedNodes.iterator().next();
+            LQEnhancedBus.start(enhancedNode);
         }
 
         //启动MQ
@@ -86,6 +84,9 @@ public class LqCloudRunner {
         LQRegisterCenter.registerNode(node);
         //启动注册服务中心
         LQRegisterCenter.start();
+        //同步注册到增强版注册中心，确保 Bus 推送时能正确获取节点信息
+        LQEnhancedRegisterCenter.registerNode(node);
+        LQEnhancedRegisterCenter.start();
         return node;
     }
 }

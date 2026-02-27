@@ -3,7 +3,7 @@ package cn.lingque.cloud.config;
 
 import cn.lingque.base.LQKey;
 import cn.lingque.config.LQProperties;
-import cn.lingque.runner.annon.LqEvenBus;
+import cn.lingque.bus.enhanced.annotation.LQEnhancedBusListener;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -19,7 +19,7 @@ public class LQConfigLoader {
     private final static String EVENT_KEY = "lq:config:loader";
     private final static LQKey CONFIG_KEY = LQKey.key("lq:config:subscribe",1D,LQKey.ONE_HOUR);
 
-    @LqEvenBus(even = "lq:config:loader")
+    @LQEnhancedBusListener(topic = "lq:config:loader")
     public void subscribe(String yaml){
 
     }
