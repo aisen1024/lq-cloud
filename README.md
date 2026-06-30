@@ -48,7 +48,7 @@
 <dependency>
     <groupId>io.github.aisen1024</groupId>
     <artifactId>lq-cloud</artifactId>
-    <version>1.1.8</version>
+    <version>1.1.9-high</version>
 </dependency>
 ```
 
