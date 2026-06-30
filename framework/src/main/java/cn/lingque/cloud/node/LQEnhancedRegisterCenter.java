@@ -28,7 +28,7 @@ public class LQEnhancedRegisterCenter {
 
     // ========================= Redis Keys =========================
     /** 增强节点服务列表 */
-    private final static LQKey enhancedNodeService = LQKey.key("LQ:CLOUD:ENHANCED:NODE:REG:CENTER", 1D, 5L);
+    private final static LQKey enhancedNodeService = LQKey.key("LQ:CLOUD:ENHANCED:NODE:REG:CENTER", 2D, 5L);
     
     /** 服务组列表 */
     private final static LQKey svGroupService = LQKey.key("LQ:CLOUD:ENHANCED:NODE:REG:CENTER:GROUP", 1D, LQKey.FOREVER);
@@ -84,9 +84,18 @@ public class LQEnhancedRegisterCenter {
             // 添加到本地缓存
             currentEnhancedNodes.add(node);
             
-            // 注册到Redis
+            // 使用nodeId作为ZSet的member，score为心跳时间
+            // 节点详细信息存储在Hash中
+            String nodeId = node.nodeId();
             String nodeJson = JSONUtil.toJsonStr(node);
-            enhancedNodeService.rd(node.getServerName()).ofZSet().setScore(nodeJson, currentTime * 1D);
+            
+            // 在ZSet中只存储nodeId，score为心跳时间
+            enhancedNodeService.rd(node.getServerName()).ofZSet().setScore(nodeId, currentTime * 1D);
+            
+            // 在Hash中存储完整的节点信息
+            enhancedNodeService.rd(node.getServerName() + ":details").ofHash().set(nodeId, nodeJson);
+            
+            // 更新服务组
             svGroupService.rd().ofZSet().setScore(node.getServerName(), currentTime * 1D);
             
             // 注册协议映射
@@ -163,25 +172,35 @@ public class LQEnhancedRegisterCenter {
                 return filterAndSortNodes(cachedNodes, strategy);
             }
             
-            // 从Redis获取
+            // 从Redis ZSet获取活跃的nodeId列表（根据心跳时间过滤）
+            // 心跳间隔2秒，超时时间设置为30秒（15个心跳周期），更宽容的超时策略
             long currentTime = System.currentTimeMillis();
             List<RedisRank> svList = enhancedNodeService.<List<RedisRank>>rd(serverName)
-                    .ofZSet().getByScoreRange(currentTime - 10000D, currentTime * 1D, 99999);
+                    .ofZSet().getByScoreRange(currentTime - 30000D, currentTime * 1D, 99999);
             
-            List<LQEnhancedNodeInfo> nodes = svList.stream()
-                    .map(i -> {
+            // 从Hash中获取节点详细信息
+            List<LQEnhancedNodeInfo> nodes = new ArrayList<>();
+            if (svList != null && !svList.isEmpty()) {
+                for (RedisRank rank : svList) {
+                    String nodeId = rank.getMemberId();
+                    String nodeJson = enhancedNodeService.rd(serverName + ":details").ofHash().getValue(nodeId,String.class);
+                    
+                    if (nodeJson != null) {
                         try {
-                            return LQUtil.jsonToBean(i.getMemberId(), LQEnhancedNodeInfo.class);
+                            LQEnhancedNodeInfo node = LQUtil.jsonToBean(nodeJson, LQEnhancedNodeInfo.class);
+                            if (node != null && filterByProtocol(node, protocol) && filterByTags(node, tags)) {
+                                // 检查节点是否真正健康（基于心跳时间）
+                                long heartbeatAge = currentTime - rank.getScore().longValue();
+                                if (heartbeatAge < 30000) { // 30秒内有心跳则认为健康
+                                    nodes.add(node);
+                                }
+                            }
                         } catch (Exception e) {
-                            log.warn("解析节点信息失败: {}", i.getMemberId());
-                            return null;
+                            log.warn("解析节点信息失败: nodeId={}, json={}", nodeId, nodeJson);
                         }
-                    })
-                    .filter(Objects::nonNull)
-                    .filter(node -> filterByProtocol(node, protocol))
-                    .filter(node -> filterByTags(node, tags))
-                    .filter(LQEnhancedNodeInfo::isHealthy)
-                    .collect(Collectors.toList());
+                    }
+                }
+            }
             
             // 更新缓存
             serviceCache.put(cacheKey, nodes);
@@ -246,8 +265,14 @@ public class LQEnhancedRegisterCenter {
         try {
             LQEnhancedNodeInfo.MCPToolInfo mcpInfo = node.getMcpToolInfo();
             String toolKey = mcpInfo.getToolName() + ":" + mcpInfo.getToolVersion();
+            String nodeId = node.nodeId();
+            String nodeJson = JSONUtil.toJsonStr(node);
             
-            mcpToolRegistry.rd(toolKey).ofZSet().setScore(JSONUtil.toJsonStr(node), System.currentTimeMillis() * 1D);
+            // 使用nodeId作为member，而不是整个JSON
+            mcpToolRegistry.rd(toolKey).ofZSet().setScore(nodeId, System.currentTimeMillis() * 1D);
+            
+            // 在Hash中存储完整信息
+            mcpToolRegistry.rd(toolKey + ":details").ofHash().set(nodeId, nodeJson);
             
             log.info("注册MCP工具: {} -> {}", toolKey, node.getServerName());
             return true;
@@ -263,14 +288,34 @@ public class LQEnhancedRegisterCenter {
     public static List<LQEnhancedNodeInfo> getMCPToolNodes(String toolName, String toolVersion) {
         try {
             String toolKey = toolName + ":" + toolVersion;
+            long currentTime = System.currentTimeMillis();
             List<RedisRank> toolNodes = mcpToolRegistry.<List<RedisRank>>rd(toolKey)
-                    .ofZSet().getByScoreRange(System.currentTimeMillis() - 10000D, System.currentTimeMillis() * 1D, 99999);
+                    .ofZSet().getByScoreRange(currentTime - 30000D, currentTime * 1D, 99999);
             
-            return toolNodes.stream()
-                    .map(i -> LQUtil.jsonToBean(i.getMemberId(), LQEnhancedNodeInfo.class))
-                    .filter(Objects::nonNull)
-                    .filter(LQEnhancedNodeInfo::isHealthy)
-                    .collect(Collectors.toList());
+            List<LQEnhancedNodeInfo> nodes = new ArrayList<>();
+            if (toolNodes != null && !toolNodes.isEmpty()) {
+                for (RedisRank rank : toolNodes) {
+                    String nodeId = rank.getMemberId();
+                    String nodeJson = mcpToolRegistry.rd(toolKey + ":details").ofHash().getValue(nodeId,String.class);
+                    
+                    if (nodeJson != null) {
+                        try {
+                            LQEnhancedNodeInfo node = LQUtil.jsonToBean(nodeJson, LQEnhancedNodeInfo.class);
+                            if (node != null) {
+                                // 检查节点是否健康（基于心跳时间）
+                                long heartbeatAge = currentTime - rank.getScore().longValue();
+                                if (heartbeatAge < 30000) { // 30秒内有心跳则认为健康
+                                    nodes.add(node);
+                                }
+                            }
+                        } catch (Exception e) {
+                            log.warn("解析MCP工具节点失败: nodeId={}", nodeId);
+                        }
+                    }
+                }
+            }
+            
+            return nodes;
         } catch (Exception e) {
             log.error("获取MCP工具节点失败: {}:{}", toolName, toolVersion, e);
             return new ArrayList<>();
@@ -343,7 +388,16 @@ public class LQEnhancedRegisterCenter {
             for (LQEnhancedNodeInfo node : currentEnhancedNodes) {
                 try {
                     node.setLastHeartbeat(currentTime);
-                    enhancedNodeService.rd(node.getServerName()).ofZSet().setScore(JSONUtil.toJsonStr(node), currentTime * 1D);
+                    String nodeId = node.nodeId();
+                    String nodeJson = JSONUtil.toJsonStr(node);
+                    
+                    // 更新ZSet中的心跳时间（score）
+                    enhancedNodeService.rd(node.getServerName()).ofZSet().setScore(nodeId, currentTime * 1D);
+                    
+                    // 更新Hash中的节点详细信息
+                    enhancedNodeService.rd(node.getServerName() + ":details").ofHash().set(nodeId, nodeJson);
+                    
+                    // 更新服务组心跳
                     svGroupService.rd().ofZSet().setScore(node.getServerName(), currentTime * 1D);
                     
                     // 更新健康状态
@@ -360,10 +414,22 @@ public class LQEnhancedRegisterCenter {
      */
     private static void maintainLegacyNodesHeartbeat() {
         TryCatch.trying(() -> {
+            long currentTime = System.currentTimeMillis();
             for (LQNodeInfo node : currentNodes) {
                 try {
-                    enhancedNodeService.rd(node.getServerName()).ofZSet().setScore(JSONUtil.toJsonStr(convertToEnhancedNode(node)), System.currentTimeMillis() * 1D);
-                    svGroupService.rd().ofZSet().setScore(node.getServerName(), System.currentTimeMillis() * 1D);
+                    LQEnhancedNodeInfo enhancedNode = convertToEnhancedNode(node);
+                    enhancedNode.setLastHeartbeat(currentTime);
+                    String nodeId = enhancedNode.nodeId();
+                    String nodeJson = JSONUtil.toJsonStr(enhancedNode);
+                    
+                    // 更新ZSet中的心跳时间
+                    enhancedNodeService.rd(node.getServerName()).ofZSet().setScore(nodeId, currentTime * 1D);
+                    
+                    // 更新Hash中的节点详细信息
+                    enhancedNodeService.rd(node.getServerName() + ":details").ofHash().set(nodeId, nodeJson);
+                    
+                    // 更新服务组心跳
+                    svGroupService.rd().ofZSet().setScore(node.getServerName(), currentTime * 1D);
                 } catch (Exception e) {
                     log.error("维护兼容节点心跳异常: {}", JSONUtil.toJsonStr(node), e);
                 }
